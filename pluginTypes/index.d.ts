@@ -1,3 +1,5 @@
+/// <reference path="@ijstech/eth-wallet/index.d.ts" />
+/// <reference path="@scom/scom-dapp-container/@ijstech/eth-wallet/index.d.ts" />
 /// <amd-module name="@scom/scom-ton-subscription/index.css.ts" />
 declare module "@scom/scom-ton-subscription/index.css.ts" {
     export const inputStyle: string;
@@ -25,9 +27,9 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         link?: string;
         discountRuleId?: number;
         referrer?: string;
-        defaultChainId: number;
-        wallets: IWalletPlugin[];
-        networks: any[];
+        defaultChainId?: number;
+        wallets?: IWalletPlugin[];
+        networks?: any[];
         showHeader?: boolean;
     }
     export interface IWalletPlugin {
@@ -66,6 +68,9 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     import { ITokenObject } from '@scom/scom-token-list';
     type ContractType = 'ProductMarketplace' | 'OneTimePurchaseNFT' | 'SubscriptionNFTFactory' | 'Promotion' | 'Commission';
     export class SubscriptionModel {
+        private rpcWalletId;
+        private networkMap;
+        private infuraId;
         private contractInfoByChain;
         get wallets(): IWalletPlugin[];
         get durationUnits(): {
@@ -73,6 +78,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
             value: string;
         }[];
         getContractAddress(type: ContractType, chainId: number): any;
+        getRpcWallet(): import("@ijstech/eth-wallet").IRpcWallet;
         getDefaultData(): {
             defaultChainId: number;
             networks: {
@@ -87,6 +93,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         initWallet(): Promise<void>;
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
+        initRpcWallet(defaultChainId: number): string;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         getProductInfo(productId: number): Promise<IProductInfo>;
         getProductId(nftAddress: string): Promise<number>;
@@ -156,8 +163,9 @@ declare module "@scom/scom-ton-subscription" {
             getTag: any;
             setTag: any;
         }[];
+        private resetRpcWallet;
         private getData;
-        setData(data: ITonSubscription): Promise<void>;
+        private setData;
         private getTag;
         private updateTag;
         private setTag;

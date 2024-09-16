@@ -20,9 +20,9 @@ export interface ITonSubscription {
     link?: string;
     discountRuleId?: number;
     referrer?: string;
-    defaultChainId: number;
-    wallets: IWalletPlugin[];
-    networks: any[];
+    defaultChainId?: number;
+    wallets?: IWalletPlugin[];
+    networks?: any[];
     showHeader?: boolean;
 }
 

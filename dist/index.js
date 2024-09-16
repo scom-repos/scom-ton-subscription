@@ -26,6 +26,9 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
     exports.SubscriptionModel = void 0;
     class SubscriptionModel {
         constructor() {
+            this.rpcWalletId = '';
+            this.networkMap = {};
+            this.infuraId = 'adc596bf88b648e2a8902bc9093930c5';
             this.contractInfoByChain = [
                 {
                     "97": {
@@ -68,7 +71,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         get wallets() {
             return [
                 {
-                    name: 'tonwallet'
+                    name: 'metamask'
                 }
             ];
         }
@@ -91,6 +94,9 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         getContractAddress(type, chainId) {
             const contracts = this.contractInfoByChain[chainId] || {};
             return contracts[type]?.address;
+        }
+        getRpcWallet() {
+            return this.rpcWalletId ? eth_wallet_1.Wallet.getRpcWalletInstance(this.rpcWalletId) : null;
         }
         getDefaultData() {
             return {
@@ -137,6 +143,44 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         isClientWalletConnected() {
             return false;
         }
+        initRpcWallet(defaultChainId) {
+            if (this.rpcWalletId) {
+                return this.rpcWalletId;
+            }
+            const clientWallet = eth_wallet_1.Wallet.getClientInstance();
+            const networkList = Object.values(components_2.application.store?.networkMap || []);
+            const instanceId = clientWallet.initRpcWallet({
+                networks: networkList,
+                defaultChainId,
+                infuraId: components_2.application.store?.infuraId,
+                multicalls: components_2.application.store?.multicalls
+            });
+            this.rpcWalletId = instanceId;
+            if (clientWallet.address) {
+                const rpcWallet = eth_wallet_1.Wallet.getRpcWalletInstance(instanceId);
+                rpcWallet.address = clientWallet.address;
+            }
+            const defaultNetworkList = (0, scom_network_list_1.default)();
+            const defaultNetworkMap = defaultNetworkList.reduce((acc, cur) => {
+                acc[cur.chainId] = cur;
+                return acc;
+            }, {});
+            for (let network of networkList) {
+                const networkInfo = defaultNetworkMap[network.chainId];
+                if (!networkInfo)
+                    continue;
+                if (this.infuraId && network.rpcUrls && network.rpcUrls.length > 0) {
+                    for (let i = 0; i < network.rpcUrls.length; i++) {
+                        network.rpcUrls[i] = network.rpcUrls[i].replace(/{InfuraId}/g, this.infuraId);
+                    }
+                }
+                this.networkMap[network.chainId] = {
+                    ...networkInfo,
+                    ...network
+                };
+            }
+            return instanceId;
+        }
         async getTokenInfo(address, chainId) {
             let token;
             const wallet = eth_wallet_1.Wallet.getClientInstance();
@@ -158,7 +202,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             return token;
         }
         async getProductInfo(productId) {
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const wallet = this.getRpcWallet();
             const chainId = wallet.chainId;
             const productMarketplaceAddress = this.getContractAddress('ProductMarketplace', chainId);
             if (!productMarketplaceAddress)
@@ -197,18 +241,19 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         async getProductId(nftAddress) {
             let productId;
             try {
-                const wallet = eth_wallet_1.Wallet.getClientInstance();
+                const wallet = this.getRpcWallet();
                 const subscriptionNFT = new scom_product_contract_1.Contracts.SubscriptionNFT(wallet, nftAddress);
                 productId = (await subscriptionNFT.productId()).toNumber();
             }
-            catch {
+            catch (err) {
                 console.log("product id not found");
+                console.error(err);
             }
             return productId;
         }
         async getDiscountRules(productId) {
             let discountRules = [];
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const wallet = this.getRpcWallet();
             const chainId = wallet.chainId;
             const promotionAddress = this.getContractAddress('Promotion', chainId);
             if (!promotionAddress)
@@ -389,6 +434,19 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 },
             ];
         }
+        async resetRpcWallet() {
+            await this.subscriptionModel.initRpcWallet(this._data.chainId || this._data.defaultChainId);
+            const chainId = this._data.chainId;
+            const data = {
+                defaultChainId: chainId || this._data.defaultChainId,
+                wallets: this.subscriptionModel.wallets,
+                networks: chainId ? [{ chainId: chainId }] : this._data.networks,
+                showHeader: false,
+                rpcWalletId: this.subscriptionModel.getRpcWallet().instanceId
+            };
+            if (this.containerDapp?.setData)
+                await this.containerDapp.setData(data);
+        }
         getData() {
             return this._data;
         }
@@ -396,10 +454,16 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.showLoading();
             this._data = data;
             this.discountRules = [];
-            this.subscriptionModel.initWallet();
             this.edtStartDate.value = undefined;
             this.edtDuration.value = '';
             this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
+            await this.resetRpcWallet();
+            await this.subscriptionModel.initWallet();
+            if (!this._data.productId && this._data.nftAddress) {
+                let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
+                if (productId)
+                    this._data.productId = productId;
+            }
             await this.refreshDApp();
             this.hideLoading();
         }
@@ -624,13 +688,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const durationUnits = this.subscriptionModel.durationUnits;
             this.comboDurationUnit.items = durationUnits;
             this.comboDurationUnit.selectedItem = durationUnits[0];
-            const data = {
-                wallets: this.subscriptionModel.wallets,
-                networks: [],
-                showHeader: false,
-            };
-            if (this.containerDapp?.setData)
-                await this.containerDapp.setData(data);
         }
         render() {
             return (this.$render("i-panel", null,

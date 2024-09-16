@@ -175,18 +175,36 @@ export default class ScomTonSubscription extends Module {
         ]
     }
 
+    private async resetRpcWallet() {
+        await this.subscriptionModel.initRpcWallet(this._data.chainId || this._data.defaultChainId);
+        const chainId = this._data.chainId;
+        const data = {
+            defaultChainId: chainId || this._data.defaultChainId,
+            wallets: this.subscriptionModel.wallets,
+            networks: chainId ? [{ chainId: chainId }] : this._data.networks,
+            showHeader: false,
+            rpcWalletId: this.subscriptionModel.getRpcWallet().instanceId
+        }
+        if (this.containerDapp?.setData) await this.containerDapp.setData(data);
+    }
+
     private getData() {
         return this._data;
     }
 
-    async setData(data: ITonSubscription) {
+    private async setData(data: ITonSubscription) {
         this.showLoading();
         this._data = data;
         this.discountRules = [];
-        this.subscriptionModel.initWallet();
         this.edtStartDate.value = undefined;
         this.edtDuration.value = '';
         this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
+        await this.resetRpcWallet();
+        await this.subscriptionModel.initWallet();
+        if (!this._data.productId && this._data.nftAddress) {
+          let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
+          if (productId) this._data.productId = productId;
+        }
         await this.refreshDApp();
         this.hideLoading();
     }
@@ -428,12 +446,6 @@ export default class ScomTonSubscription extends Module {
         const durationUnits = this.subscriptionModel.durationUnits;
         this.comboDurationUnit.items = durationUnits;
         this.comboDurationUnit.selectedItem = durationUnits[0];
-        const data = {
-            wallets: this.subscriptionModel.wallets,
-            networks: [],
-            showHeader: false,
-        }
-        if (this.containerDapp?.setData) await this.containerDapp.setData(data);
     }
 
     render() {

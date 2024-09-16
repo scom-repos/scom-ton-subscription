@@ -1,5 +1,5 @@
-import { FormatUtils, moment } from "@ijstech/components";
-import { BigNumber, Wallet, Utils, IMulticallContractCall } from "@ijstech/eth-wallet";
+import { application, FormatUtils, moment } from "@ijstech/components";
+import { BigNumber, Wallet, Utils, IMulticallContractCall, INetwork } from "@ijstech/eth-wallet";
 import { IDiscountRule, IProductInfo, IWalletPlugin } from "./interface";
 import { Contracts as ProductContracts } from '@scom/scom-product-contract';
 import getNetworkList from '@scom/scom-network-list';
@@ -8,6 +8,9 @@ import { ITokenObject, tokenStore } from '@scom/scom-token-list';
 type ContractType = 'ProductMarketplace' | 'OneTimePurchaseNFT' | 'SubscriptionNFTFactory' | 'Promotion' | 'Commission';
 
 export class SubscriptionModel {
+    private rpcWalletId: string = '';
+    private networkMap = {} as { [key: number]: INetwork };
+    private infuraId: string = 'adc596bf88b648e2a8902bc9093930c5';
     private contractInfoByChain = [
         {
             "97": {
@@ -50,7 +53,7 @@ export class SubscriptionModel {
     get wallets(): IWalletPlugin[] {
         return [
             {
-                name: 'tonwallet'
+                name: 'metamask'
             }
         ];
     }
@@ -75,6 +78,10 @@ export class SubscriptionModel {
     getContractAddress(type: ContractType, chainId: number) {
         const contracts = this.contractInfoByChain[chainId] || {};
         return contracts[type]?.address;
+    }
+
+    getRpcWallet() {
+      return this.rpcWalletId ? Wallet.getRpcWalletInstance(this.rpcWalletId) : null;
     }
 
     getDefaultData() {
@@ -126,6 +133,45 @@ export class SubscriptionModel {
         return false;
     }
 
+    initRpcWallet(defaultChainId: number) {
+      if (this.rpcWalletId) {
+        return this.rpcWalletId;
+      }
+      const clientWallet = Wallet.getClientInstance();
+      const networkList: INetwork[] = Object.values(application.store?.networkMap || []);
+      const instanceId = clientWallet.initRpcWallet({
+        networks: networkList,
+        defaultChainId,
+        infuraId: application.store?.infuraId,
+        multicalls: application.store?.multicalls
+      });
+      this.rpcWalletId = instanceId;
+      if (clientWallet.address) {
+        const rpcWallet = Wallet.getRpcWalletInstance(instanceId);
+        rpcWallet.address = clientWallet.address;
+      }
+  
+      const defaultNetworkList = getNetworkList();
+      const defaultNetworkMap = defaultNetworkList.reduce((acc, cur) => {
+        acc[cur.chainId] = cur;
+        return acc;
+      }, {});
+      for (let network of networkList) {
+        const networkInfo = defaultNetworkMap[network.chainId];
+        if (!networkInfo) continue;
+        if (this.infuraId && network.rpcUrls && network.rpcUrls.length > 0) {
+          for (let i = 0; i < network.rpcUrls.length; i++) {
+            network.rpcUrls[i] = network.rpcUrls[i].replace(/{InfuraId}/g, this.infuraId);
+          }
+        }
+        this.networkMap[network.chainId] = {
+          ...networkInfo,
+          ...network
+        };
+      }
+      return instanceId;
+    }
+
     async getTokenInfo(address: string, chainId: number) {
         let token: ITokenObject;
         const wallet = Wallet.getClientInstance();
@@ -148,7 +194,7 @@ export class SubscriptionModel {
     }
 
     async getProductInfo(productId: number): Promise<IProductInfo> {
-        const wallet = Wallet.getClientInstance();
+        const wallet = this.getRpcWallet();
         const chainId = wallet.chainId;
         const productMarketplaceAddress = this.getContractAddress('ProductMarketplace', chainId);
         if (!productMarketplaceAddress) return null;
@@ -186,18 +232,19 @@ export class SubscriptionModel {
     async getProductId(nftAddress: string) {
         let productId: number;
         try {
-            const wallet = Wallet.getClientInstance();
+            const wallet = this.getRpcWallet();
             const subscriptionNFT = new ProductContracts.SubscriptionNFT(wallet, nftAddress);
             productId = (await subscriptionNFT.productId()).toNumber();
-        } catch {
+        } catch (err) {
             console.log("product id not found");
+            console.error(err);
         }
         return productId;
     }
 
     async getDiscountRules(productId: number) {
         let discountRules: IDiscountRule[] = [];
-        const wallet = Wallet.getClientInstance();
+        const wallet = this.getRpcWallet();
         const chainId = wallet.chainId;
         const promotionAddress = this.getContractAddress('Promotion', chainId);
         if (!promotionAddress) return discountRules;
