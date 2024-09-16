@@ -7,6 +7,13 @@ export default class Module1 extends Module {
 
     async init() {
         super.init();
+        this.tonSubscription.setData({
+            chainId: 43113,
+            nftAddress: "0x0075Fb0A3f94B32f8F3aF08AD6D93b1F45437501",
+            defaultChainId: 43113,
+            wallets: [],
+            networks: []
+        });
     }
     
     render() {
