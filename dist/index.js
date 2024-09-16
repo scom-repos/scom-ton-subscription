@@ -364,7 +364,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const data = {
                 wallets: this.subscriptionModel.wallets,
                 networks: [],
-                showHeader: true,
+                showHeader: false,
             };
             if (this.containerDapp?.setData)
                 await this.containerDapp.setData(data);

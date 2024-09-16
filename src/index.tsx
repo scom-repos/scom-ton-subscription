@@ -312,7 +312,7 @@ export default class ScomTonSubscription extends Module {
         const data = {
             wallets: this.subscriptionModel.wallets,
             networks: [],
-            showHeader: true,
+            showHeader: false,
         }
         if (this.containerDapp?.setData) await this.containerDapp.setData(data);
     }
