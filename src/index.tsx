@@ -100,7 +100,83 @@ export default class ScomTonSubscription extends Module {
 
     hideLoading() {
         this.pnlLoading.visible = false;
-        this.pnlBody.visible = true;
+        this.pnlBody.visible = !this.pnlUnsupportedNetwork.visible;
+    }
+
+    getConfigurators() {
+        const defaultData = this.subscriptionModel.getDefaultData();
+        return [
+            {
+                name: 'Builder Configurator',
+                target: 'Builders',
+                getData: this.getData.bind(this),
+                setData: async (data: ITonSubscription) => {
+                    await this.setData({ ...defaultData, ...data });
+                },
+                setupData: async (data: ITonSubscription) => {
+                    this._data = { ...data };
+                    this.subscriptionModel.initWallet();
+                    if (!this.subscriptionModel.isClientWalletConnected()) {
+                        this.subscriptionModel.connectWallet();
+                        return;
+                    }
+                    let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
+                    if (productId) {
+                        this._data.productId = productId;
+                        this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
+                        this._data.priceToMint = Utils.fromDecimals(this.productInfo.price, this.productInfo.token.decimals).toNumber();
+                        this._data.tokenToMint = this.productInfo.token.address;
+                        this._data.durationInDays = Math.ceil((this.productInfo.priceDuration?.toNumber() || 0) / 86400);
+                    }
+                    return true;
+                },
+                updateDiscountRules: async (productId: number, rules: IDiscountRule[], ruleIdsToDelete: number[] = []) => {
+                    return new Promise(async (resolve, reject) => {
+                        const callback = (err: Error, receipt?: string) => {
+                            if (err) {
+                                this.showTxStatusModal('error', err);
+                            }
+                        };
+                        const confirmationCallback = async (receipt: any) => {
+                            const discountRules = await this.subscriptionModel.getDiscountRules(this._data.productId);
+                            resolve(discountRules);
+                        };
+                        try {
+                            await this.subscriptionModel.updateDiscountRules(productId, rules, ruleIdsToDelete, callback, confirmationCallback);
+                        } catch (error) {
+                            this.showTxStatusModal('error', 'Something went wrong updating discount rule!');
+                            console.log('updateDiscountRules', error);
+                            reject(error);
+                        }
+                    });
+                },
+                updateCommissionCampaign: async (productId: number, commissionRate: string, affiliates: string[]) => {
+                    return new Promise(async (resolve, reject) => {
+                        const callback = (err: Error, receipt?: string) => {
+                            if (err) {
+                                this.showTxStatusModal('error', err);
+                            }
+                        };
+                        const confirmationCallback = async (receipt: any) => {
+                            resolve(true);
+                        };
+                        try {
+                            await this.subscriptionModel.updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback);
+                        } catch (error) {
+                            this.showTxStatusModal('error', 'Something went wrong updating commission campaign!');
+                            console.log('updateCommissionCampaign', error);
+                            reject(error);
+                        }
+                    });
+                },
+                getTag: this.getTag.bind(this),
+                setTag: this.setTag.bind(this)
+            },
+        ]
+    }
+
+    private getData() {
+        return this._data;
     }
 
     async setData(data: ITonSubscription) {
@@ -113,6 +189,49 @@ export default class ScomTonSubscription extends Module {
         this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
         await this.refreshDApp();
         this.hideLoading();
+    }
+
+    private getTag() {
+      return this.tag;
+    }
+  
+    private updateTag(type: 'light' | 'dark', value: any) {
+      this.tag[type] = this.tag[type] ?? {};
+      for (let prop in value) {
+        if (value.hasOwnProperty(prop))
+          this.tag[type][prop] = value[prop];
+      }
+    }
+  
+    private async setTag(value: any) {
+      const newValue = value || {};
+      if (!this.tag) this.tag = {}
+      for (let prop in newValue) {
+        if (newValue.hasOwnProperty(prop)) {
+          if (prop === 'light' || prop === 'dark')
+            this.updateTag(prop, newValue[prop]);
+          else
+            this.tag[prop] = newValue[prop];
+        }
+      }
+      if (this.containerDapp)
+        this.containerDapp.setTag(this.tag);
+      this.updateTheme();
+    }
+
+    private updateStyle(name: string, value: any) {
+      value ?
+        this.style.setProperty(name, value) :
+        this.style.removeProperty(name);
+    }
+  
+    private updateTheme() {
+      const themeVar = this.containerDapp?.theme || 'dark';
+      this.updateStyle('--text-primary', this.tag[themeVar]?.fontColor);
+      this.updateStyle('--background-main', this.tag[themeVar]?.backgroundColor);
+      this.updateStyle('--input-font_color', this.tag[themeVar]?.inputFontColor);
+      this.updateStyle('--input-background', this.tag[themeVar]?.inputBackgroundColor);
+      this.updateStyle('--colors-primary-main', this.tag[themeVar]?.buttonBackgroundColor);
     }
 
     private async refreshDApp() {
@@ -285,21 +404,21 @@ export default class ScomTonSubscription extends Module {
         }
         this.updateSubmitButton(true);
         const callback = (error: Error, receipt?: string) => {
-          if (error) {
-            this.showTxStatusModal('error', error);
-          }
+            if (error) {
+                this.showTxStatusModal('error', error);
+            }
         };
         const startTime = this.edtStartDate.value.unix();
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
         const duration = days * 86400;
         const confirmationCallback = async () => {
-          this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
-          if (this.onSubscribe) this.onSubscribe();
+            this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
+            if (this.onSubscribe) this.onSubscribe();
         };
         if (this.isRenewal) {
-          await this.subscriptionModel.renewSubscription(this._data.productId, duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
+            await this.subscriptionModel.renewSubscription(this._data.productId, duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
         } else {
-          await this.subscriptionModel.subscribe(this._data.productId, startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
+            await this.subscriptionModel.subscribe(this._data.productId, startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
         }
     }
 

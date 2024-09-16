@@ -11,7 +11,8 @@
     "@scom/scom-ton-subscription": "*",
     "@scom/scom-dapp-container": "*",
     "@ijstech/eth-contract": "*",
-    "@ijstech/eth-wallet": "*"
+    "@ijstech/eth-wallet": "*",
+    "@scom/scom-product-contract": "*"
   },
   "menus": [
     {

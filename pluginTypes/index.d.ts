@@ -63,29 +63,44 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
 declare module "@scom/scom-ton-subscription/model.ts" {
     import { BigNumber } from "@ijstech/eth-wallet";
     import { IDiscountRule, IProductInfo, IWalletPlugin } from "@scom/scom-ton-subscription/interface.ts";
+    import { ITokenObject } from '@scom/scom-token-list';
+    type ContractType = 'ProductMarketplace' | 'OneTimePurchaseNFT' | 'SubscriptionNFTFactory' | 'Promotion' | 'Commission';
     export class SubscriptionModel {
-        private _durationUnits;
-        private _wallets;
+        private contractInfoByChain;
         get wallets(): IWalletPlugin[];
         get durationUnits(): {
             label: string;
             value: string;
         }[];
+        getContractAddress(type: ContractType, chainId: number): any;
+        getDefaultData(): {
+            defaultChainId: number;
+            networks: {
+                chainId: number;
+            }[];
+            wallets: {
+                name: string;
+            }[];
+        };
         getDurationInDays(duration: number, unit: 'days' | 'months' | 'years', startDate: any): number;
         formatNumber(value: number | string | BigNumber, decimalFigures?: number): string;
         initWallet(): Promise<void>;
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
+        getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         getProductInfo(productId: number): Promise<IProductInfo>;
+        getProductId(nftAddress: string): Promise<number>;
         getDiscountRules(productId: number): Promise<IDiscountRule[]>;
         subscribe(productId: number, startTime: number, duration: number, referrer: string, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
         renewSubscription(productId: number, duration: number, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
+        updateDiscountRules(productId: number, rules: IDiscountRule[], ruleIdsToDelete?: number[], callback?: any, confirmationCallback?: any): Promise<void>;
+        updateCommissionCampaign(productId: number, commissionRate: string, affiliates: string[], callback?: any, confirmationCallback?: any): Promise<void>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
 declare module "@scom/scom-ton-subscription" {
     import { ControlElement, Module } from '@ijstech/components';
-    import { ITonSubscription } from "@scom/scom-ton-subscription/interface.ts";
+    import { IDiscountRule, ITonSubscription } from "@scom/scom-ton-subscription/interface.ts";
     interface ScomTonSubscriptionElement extends ControlElement {
     }
     global {
@@ -130,7 +145,24 @@ declare module "@scom/scom-ton-subscription" {
         private get durationUnit();
         showLoading(): void;
         hideLoading(): void;
+        getConfigurators(): {
+            name: string;
+            target: string;
+            getData: any;
+            setData: (data: ITonSubscription) => Promise<void>;
+            setupData: (data: ITonSubscription) => Promise<boolean>;
+            updateDiscountRules: (productId: number, rules: IDiscountRule[], ruleIdsToDelete?: number[]) => Promise<unknown>;
+            updateCommissionCampaign: (productId: number, commissionRate: string, affiliates: string[]) => Promise<unknown>;
+            getTag: any;
+            setTag: any;
+        }[];
+        private getData;
         setData(data: ITonSubscription): Promise<void>;
+        private getTag;
+        private updateTag;
+        private setTag;
+        private updateStyle;
+        private updateTheme;
         private refreshDApp;
         private _updateEndDate;
         private _updateDiscount;

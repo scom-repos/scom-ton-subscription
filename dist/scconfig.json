@@ -9,6 +9,7 @@
         "@scom/scom-multicall",
         "@scom/scom-dapp-container",
         "@scom/scom-tx-status-modal",
-        "@scom/scom-token-list"
+        "@scom/scom-token-list",
+        "@scom/scom-product-contract"
     ]
 }

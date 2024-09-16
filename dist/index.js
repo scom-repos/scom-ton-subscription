@@ -20,13 +20,60 @@ define("@scom/scom-ton-subscription/interface.ts", ["require", "exports"], funct
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
 });
-define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet"], function (require, exports, components_2, eth_wallet_1) {
+define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet", "@scom/scom-product-contract", "@scom/scom-network-list", "@scom/scom-token-list"], function (require, exports, components_2, eth_wallet_1, scom_product_contract_1, scom_network_list_1, scom_token_list_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SubscriptionModel = void 0;
     class SubscriptionModel {
         constructor() {
-            this._durationUnits = [
+            this.contractInfoByChain = [
+                {
+                    "97": {
+                        "ProductMarketplace": {
+                            "address": "0x93e684ad2AEE178e23675fbE5bA88c3e4e7467f4"
+                        },
+                        "OneTimePurchaseNFT": {
+                            "address": "0x5aE9c7f08572D52e2DB8508B502D767A1ECf21Bf"
+                        },
+                        "SubscriptionNFTFactory": {
+                            "address": "0x0055e4edb49425A29784Bd9a7986F5b56dcc8f6b"
+                        },
+                        "Promotion": {
+                            "address": "0x13d23201a8A6661881d701E1cF56A30A8eb0aE90"
+                        },
+                        "Commission": {
+                            "address": "0xcdc39C8bC8F9fDAF31D79f461B47477606770c62"
+                        }
+                    },
+                    "43113": {
+                        "ProductMarketplace": {
+                            "address": "0xeC3747eAbf71D4BDF15Abb70398C04B642363D10"
+                        },
+                        "OneTimePurchaseNFT": {
+                            "address": "0x404eeCC44F7aFc1f7561b2A9bC475513206D4b15"
+                        },
+                        "SubscriptionNFTFactory": {
+                            "address": "0x9231761Bd5f32c8f6465d82168BAdaB109D23290"
+                        },
+                        "Promotion": {
+                            "address": "0x22786FF4E595f1B517242549ec1D263e62dc6F26"
+                        },
+                        "Commission": {
+                            "address": "0x2Ed01CB805e7f52c92cfE9eC02E7Dc899cA53BCa"
+                        }
+                    }
+                }
+            ];
+        }
+        get wallets() {
+            return [
+                {
+                    name: 'tonwallet'
+                }
+            ];
+        }
+        get durationUnits() {
+            return [
                 {
                     label: 'Day(s)',
                     value: 'days'
@@ -40,17 +87,28 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                     value: 'years'
                 }
             ];
-            this._wallets = [
-                {
-                    name: 'tonwallet'
-                }
-            ];
         }
-        get wallets() {
-            return this._wallets;
+        getContractAddress(type, chainId) {
+            const contracts = this.contractInfoByChain[chainId] || {};
+            return contracts[type]?.address;
         }
-        get durationUnits() {
-            return this._durationUnits;
+        getDefaultData() {
+            return {
+                "defaultChainId": 43113,
+                "networks": [
+                    {
+                        "chainId": 43113
+                    },
+                    {
+                        "chainId": 97
+                    }
+                ],
+                "wallets": [
+                    {
+                        "name": "metamask"
+                    }
+                ]
+            };
         }
         getDurationInDays(duration, unit, startDate) {
             if (unit === 'days') {
@@ -72,39 +130,129 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             return components_2.FormatUtils.formatNumber(value, { decimalFigures: decimalFigures !== undefined ? decimalFigures : 4, minValue, hasTrailingZero: false });
         }
         ;
-        async initWallet() { }
+        async initWallet() {
+            await eth_wallet_1.Wallet.getClientInstance().init();
+        }
         async connectWallet() { }
         isClientWalletConnected() {
             return false;
         }
+        async getTokenInfo(address, chainId) {
+            let token;
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            wallet.chainId = chainId;
+            const isValidAddress = wallet.isAddress(address);
+            if (isValidAddress) {
+                const tokenAddress = wallet.toChecksumAddress(address);
+                const tokenInfo = await wallet.tokenInfo(tokenAddress);
+                if (tokenInfo?.symbol) {
+                    token = {
+                        chainId,
+                        address: tokenAddress,
+                        name: tokenInfo.name,
+                        decimals: tokenInfo.decimals,
+                        symbol: tokenInfo.symbol
+                    };
+                }
+            }
+            return token;
+        }
         async getProductInfo(productId) {
-            return {
-                productType: new eth_wallet_1.BigNumber(1),
-                productId: new eth_wallet_1.BigNumber(13),
-                uri: "",
-                quantity: new eth_wallet_1.BigNumber(10000),
-                price: new eth_wallet_1.BigNumber(1000),
-                maxQuantity: new eth_wallet_1.BigNumber(10000),
-                maxPrice: new eth_wallet_1.BigNumber(0),
-                token: {
-                    "name": "Tether USD",
-                    "address": "0xb9C31Ea1D475c25E58a1bE1a46221db55E5A7C6e",
-                    "symbol": "USDT.e",
-                    "decimals": 6,
-                    "chainId": 43113
-                },
-                status: new eth_wallet_1.BigNumber(1),
-                nft: "0x0075Fb0A3f94B32f8F3aF08AD6D93b1F45437501",
-                nftId: new eth_wallet_1.BigNumber(0),
-                priceDuration: new eth_wallet_1.BigNumber(86400)
-            };
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const chainId = wallet.chainId;
+            const productMarketplaceAddress = this.getContractAddress('ProductMarketplace', chainId);
+            if (!productMarketplaceAddress)
+                return null;
+            try {
+                const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
+                const product = await productMarketplace.products(productId);
+                const chainId = wallet.chainId;
+                if (product.token && product.token === eth_wallet_1.Utils.nullAddress) {
+                    let net = (0, scom_network_list_1.default)().find(net => net.chainId === chainId);
+                    return {
+                        ...product,
+                        token: {
+                            chainId: wallet.chainId,
+                            address: product.token,
+                            decimals: net.nativeCurrency.decimals,
+                            symbol: net.nativeCurrency.symbol,
+                            name: net.nativeCurrency.symbol,
+                        }
+                    };
+                }
+                const _tokenList = scom_token_list_1.tokenStore.getTokenList(chainId);
+                let token = _tokenList.find(token => product.token && token.address && token.address.toLowerCase() === product.token.toLowerCase());
+                if (!token && product.token) {
+                    token = await this.getTokenInfo(product.token, chainId);
+                }
+                return {
+                    ...product,
+                    token
+                };
+            }
+            catch {
+                return null;
+            }
+        }
+        async getProductId(nftAddress) {
+            let productId;
+            try {
+                const wallet = eth_wallet_1.Wallet.getClientInstance();
+                const subscriptionNFT = new scom_product_contract_1.Contracts.SubscriptionNFT(wallet, nftAddress);
+                productId = (await subscriptionNFT.productId()).toNumber();
+            }
+            catch {
+                console.log("product id not found");
+            }
+            return productId;
         }
         async getDiscountRules(productId) {
             let discountRules = [];
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const chainId = wallet.chainId;
+            const promotionAddress = this.getContractAddress('Promotion', chainId);
+            if (!promotionAddress)
+                return discountRules;
+            try {
+                const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
+                const ruleCount = await promotion.getDiscountRuleCount(productId);
+                let contractCalls = [];
+                for (let i = 0; i < ruleCount.toNumber(); i++) {
+                    contractCalls.push({
+                        contract: promotion,
+                        methodName: 'discountRules',
+                        params: [productId, i],
+                        to: promotionAddress
+                    });
+                }
+                if (contractCalls.length === 0)
+                    return discountRules;
+                const multicallResults = await wallet.doMulticall(contractCalls);
+                for (let i = 0; i < multicallResults.length; i++) {
+                    const multicallResult = multicallResults[i];
+                    if (!multicallResult)
+                        continue;
+                    const discountRule = multicallResult;
+                    discountRules.push({
+                        id: discountRule.id.toNumber(),
+                        minDuration: discountRule.minDuration,
+                        discountPercentage: discountRule.discountPercentage.toNumber(),
+                        fixedPrice: eth_wallet_1.Utils.fromDecimals(discountRule.fixedPrice),
+                        startTime: discountRule.startTime.toNumber(),
+                        endTime: discountRule.endTime.toNumber(),
+                        discountApplication: discountRule.discountApplication.toNumber()
+                    });
+                }
+            }
+            catch (err) {
+                console.error('failed to get discount rules');
+            }
             return discountRules;
         }
         async subscribe(productId, startTime, duration, referrer, discountRuleId = 0, callback, confirmationCallback) { }
         async renewSubscription(productId, duration, discountRuleId = 0, callback, confirmationCallback) { }
+        async updateDiscountRules(productId, rules, ruleIdsToDelete = [], callback, confirmationCallback) { }
+        async updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback) { }
     }
     exports.SubscriptionModel = SubscriptionModel;
 });
@@ -166,7 +314,83 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         hideLoading() {
             this.pnlLoading.visible = false;
-            this.pnlBody.visible = true;
+            this.pnlBody.visible = !this.pnlUnsupportedNetwork.visible;
+        }
+        getConfigurators() {
+            const defaultData = this.subscriptionModel.getDefaultData();
+            return [
+                {
+                    name: 'Builder Configurator',
+                    target: 'Builders',
+                    getData: this.getData.bind(this),
+                    setData: async (data) => {
+                        await this.setData({ ...defaultData, ...data });
+                    },
+                    setupData: async (data) => {
+                        this._data = { ...data };
+                        this.subscriptionModel.initWallet();
+                        if (!this.subscriptionModel.isClientWalletConnected()) {
+                            this.subscriptionModel.connectWallet();
+                            return;
+                        }
+                        let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
+                        if (productId) {
+                            this._data.productId = productId;
+                            this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
+                            this._data.priceToMint = eth_wallet_2.Utils.fromDecimals(this.productInfo.price, this.productInfo.token.decimals).toNumber();
+                            this._data.tokenToMint = this.productInfo.token.address;
+                            this._data.durationInDays = Math.ceil((this.productInfo.priceDuration?.toNumber() || 0) / 86400);
+                        }
+                        return true;
+                    },
+                    updateDiscountRules: async (productId, rules, ruleIdsToDelete = []) => {
+                        return new Promise(async (resolve, reject) => {
+                            const callback = (err, receipt) => {
+                                if (err) {
+                                    this.showTxStatusModal('error', err);
+                                }
+                            };
+                            const confirmationCallback = async (receipt) => {
+                                const discountRules = await this.subscriptionModel.getDiscountRules(this._data.productId);
+                                resolve(discountRules);
+                            };
+                            try {
+                                await this.subscriptionModel.updateDiscountRules(productId, rules, ruleIdsToDelete, callback, confirmationCallback);
+                            }
+                            catch (error) {
+                                this.showTxStatusModal('error', 'Something went wrong updating discount rule!');
+                                console.log('updateDiscountRules', error);
+                                reject(error);
+                            }
+                        });
+                    },
+                    updateCommissionCampaign: async (productId, commissionRate, affiliates) => {
+                        return new Promise(async (resolve, reject) => {
+                            const callback = (err, receipt) => {
+                                if (err) {
+                                    this.showTxStatusModal('error', err);
+                                }
+                            };
+                            const confirmationCallback = async (receipt) => {
+                                resolve(true);
+                            };
+                            try {
+                                await this.subscriptionModel.updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback);
+                            }
+                            catch (error) {
+                                this.showTxStatusModal('error', 'Something went wrong updating commission campaign!');
+                                console.log('updateCommissionCampaign', error);
+                                reject(error);
+                            }
+                        });
+                    },
+                    getTag: this.getTag.bind(this),
+                    setTag: this.setTag.bind(this)
+                },
+            ];
+        }
+        getData() {
+            return this._data;
         }
         async setData(data) {
             this.showLoading();
@@ -178,6 +402,45 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
             await this.refreshDApp();
             this.hideLoading();
+        }
+        getTag() {
+            return this.tag;
+        }
+        updateTag(type, value) {
+            this.tag[type] = this.tag[type] ?? {};
+            for (let prop in value) {
+                if (value.hasOwnProperty(prop))
+                    this.tag[type][prop] = value[prop];
+            }
+        }
+        async setTag(value) {
+            const newValue = value || {};
+            if (!this.tag)
+                this.tag = {};
+            for (let prop in newValue) {
+                if (newValue.hasOwnProperty(prop)) {
+                    if (prop === 'light' || prop === 'dark')
+                        this.updateTag(prop, newValue[prop]);
+                    else
+                        this.tag[prop] = newValue[prop];
+                }
+            }
+            if (this.containerDapp)
+                this.containerDapp.setTag(this.tag);
+            this.updateTheme();
+        }
+        updateStyle(name, value) {
+            value ?
+                this.style.setProperty(name, value) :
+                this.style.removeProperty(name);
+        }
+        updateTheme() {
+            const themeVar = this.containerDapp?.theme || 'dark';
+            this.updateStyle('--text-primary', this.tag[themeVar]?.fontColor);
+            this.updateStyle('--background-main', this.tag[themeVar]?.backgroundColor);
+            this.updateStyle('--input-font_color', this.tag[themeVar]?.inputFontColor);
+            this.updateStyle('--input-background', this.tag[themeVar]?.inputBackgroundColor);
+            this.updateStyle('--colors-primary-main', this.tag[themeVar]?.buttonBackgroundColor);
         }
         async refreshDApp() {
             try {
