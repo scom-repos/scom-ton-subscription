@@ -89,7 +89,9 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                 }
             ];
         }
-        getContractAddress(type, chainId) {
+        getContractAddress(type) {
+            const wallet = this.getRpcWallet();
+            const chainId = wallet?.chainId;
             const contracts = this.contractInfoByChain[chainId] || {};
             return contracts[type]?.address;
         }
@@ -140,7 +142,8 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         }
         async connectWallet() { }
         isClientWalletConnected() {
-            return false;
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            return wallet.isConnected;
         }
         initRpcWallet(defaultChainId) {
             if (this.rpcWalletId) {
@@ -201,12 +204,11 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             return token;
         }
         async getProductInfo(productId) {
-            const wallet = this.getRpcWallet();
-            const chainId = wallet.chainId;
-            const productMarketplaceAddress = this.getContractAddress('ProductMarketplace', chainId);
+            const productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
             if (!productMarketplaceAddress)
                 return null;
             try {
+                const wallet = this.getRpcWallet();
                 const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
                 const product = await productMarketplace.products(productId);
                 const chainId = wallet.chainId;
@@ -252,12 +254,11 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         }
         async getDiscountRules(productId) {
             let discountRules = [];
-            const wallet = this.getRpcWallet();
-            const chainId = wallet.chainId;
-            const promotionAddress = this.getContractAddress('Promotion', chainId);
+            const promotionAddress = this.getContractAddress('Promotion');
             if (!promotionAddress)
                 return discountRules;
             try {
+                const wallet = this.getRpcWallet();
                 const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
                 const ruleCount = await promotion.getDiscountRuleCount(productId);
                 let contractCalls = [];
@@ -293,10 +294,226 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             }
             return discountRules;
         }
-        async subscribe(productId, startTime, duration, referrer, discountRuleId = 0, callback, confirmationCallback) { }
-        async renewSubscription(productId, duration, discountRuleId = 0, callback, confirmationCallback) { }
-        async updateDiscountRules(productId, rules, ruleIdsToDelete = [], callback, confirmationCallback) { }
-        async updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback) { }
+        registerSendTxEvents(sendTxEventHandlers) {
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            wallet.registerSendTxEvents({
+                transactionHash: (error, receipt) => {
+                    if (sendTxEventHandlers.transactionHash) {
+                        sendTxEventHandlers.transactionHash(error, receipt);
+                    }
+                },
+                confirmation: (receipt) => {
+                    if (sendTxEventHandlers.confirmation) {
+                        sendTxEventHandlers.confirmation(receipt);
+                    }
+                },
+            });
+        }
+        async getDiscount(productId, productPrice, discountRuleId) {
+            let basePrice = productPrice;
+            let promotionAddress = this.getContractAddress('Promotion');
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
+            const index = await promotion.discountRuleIdToIndex({ param1: productId, param2: discountRuleId });
+            const rule = await promotion.discountRules({ param1: productId, param2: index });
+            if (rule.discountPercentage.gt(0)) {
+                const discount = productPrice.times(rule.discountPercentage).div(100);
+                if (productPrice.gt(discount))
+                    basePrice = productPrice.minus(discount);
+            }
+            else if (rule.fixedPrice.gt(0)) {
+                basePrice = rule.fixedPrice;
+            }
+            else {
+                discountRuleId = 0;
+            }
+            return {
+                price: basePrice,
+                id: discountRuleId
+            };
+        }
+        async subscribe(productId, startTime, duration, referrer, discountRuleId = 0, callback, confirmationCallback) {
+            let commissionAddress = this.getContractAddress('Commission');
+            let productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const commission = new scom_product_contract_1.Contracts.Commission(wallet, commissionAddress);
+            const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
+            const product = await productMarketplace.products(productId);
+            let basePrice = product.price;
+            if (discountRuleId !== 0) {
+                const discount = await this.getDiscount(productId, product.price, discountRuleId);
+                basePrice = discount.price;
+                if (discount.id === 0)
+                    discountRuleId = 0;
+            }
+            const amount = product.priceDuration.eq(duration) ? basePrice : basePrice.times(duration).div(product.priceDuration);
+            let tokenInAmount;
+            if (referrer) {
+                let campaign = await commission.getCampaign({ campaignId: productId, returnArrays: true });
+                const affiliates = (campaign?.affiliates || []).map(a => a.toLowerCase());
+                if (affiliates.includes(referrer.toLowerCase())) {
+                    const commissionRate = eth_wallet_1.Utils.fromDecimals(campaign.commissionRate, 6);
+                    tokenInAmount = new eth_wallet_1.BigNumber(amount).dividedBy(new eth_wallet_1.BigNumber(1).minus(commissionRate)).decimalPlaces(0, eth_wallet_1.BigNumber.ROUND_DOWN);
+                }
+            }
+            let receipt;
+            try {
+                this.registerSendTxEvents({
+                    transactionHash: callback,
+                    confirmation: confirmationCallback
+                });
+                if (product.token === eth_wallet_1.Utils.nullAddress) {
+                    if (!tokenInAmount || tokenInAmount.isZero()) {
+                        receipt = await productMarketplace.subscribe({
+                            to: wallet.address,
+                            productId: productId,
+                            startTime: startTime,
+                            duration: duration,
+                            discountRuleId: discountRuleId
+                        }, amount);
+                    }
+                    else {
+                        const txData = await productMarketplace.subscribe.txData({
+                            to: wallet.address,
+                            productId: productId,
+                            startTime: startTime,
+                            duration: duration,
+                            discountRuleId: discountRuleId
+                        }, amount);
+                        receipt = await commission.proxyCall({
+                            affiliate: referrer,
+                            campaignId: productId,
+                            amount: tokenInAmount,
+                            data: txData
+                        }, tokenInAmount);
+                    }
+                }
+                else {
+                    if (!tokenInAmount || tokenInAmount.isZero()) {
+                        receipt = await productMarketplace.subscribe({
+                            to: wallet.address,
+                            productId: productId,
+                            startTime: startTime,
+                            duration: duration,
+                            discountRuleId: discountRuleId
+                        });
+                    }
+                    else {
+                        const txData = await productMarketplace.subscribe.txData({
+                            to: wallet.address,
+                            productId: productId,
+                            startTime: startTime,
+                            duration: duration,
+                            discountRuleId: discountRuleId
+                        });
+                        receipt = await commission.proxyCall({
+                            affiliate: referrer,
+                            campaignId: productId,
+                            amount: tokenInAmount,
+                            data: txData
+                        });
+                    }
+                }
+            }
+            catch (err) {
+                console.error(err);
+                throw err;
+            }
+            return receipt;
+        }
+        async renewSubscription(productId, duration, discountRuleId = 0, callback, confirmationCallback) {
+            let productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
+            const product = await productMarketplace.products(productId);
+            const subscriptionNFT = new scom_product_contract_1.Contracts.SubscriptionNFT(wallet, product.nft);
+            let nftId = await subscriptionNFT.tokenOfOwnerByIndex({
+                owner: wallet.address,
+                index: 0
+            });
+            let basePrice = product.price;
+            if (discountRuleId !== 0) {
+                const discount = await this.getDiscount(productId, product.price, discountRuleId);
+                basePrice = discount.price;
+                if (discount.id === 0)
+                    discountRuleId = 0;
+            }
+            const amount = product.priceDuration.eq(duration) ? basePrice : basePrice.times(duration).div(product.priceDuration);
+            let receipt;
+            try {
+                this.registerSendTxEvents({
+                    transactionHash: callback,
+                    confirmation: confirmationCallback
+                });
+                if (product.token === eth_wallet_1.Utils.nullAddress) {
+                    receipt = await productMarketplace.renewSubscription({
+                        productId: productId,
+                        nftId: nftId,
+                        duration: duration,
+                        discountRuleId: discountRuleId
+                    }, amount);
+                }
+                else {
+                    receipt = await productMarketplace.renewSubscription({
+                        productId: productId,
+                        nftId: nftId,
+                        duration: duration,
+                        discountRuleId: discountRuleId
+                    });
+                }
+            }
+            catch (err) {
+                console.error(err);
+                throw err;
+            }
+            return receipt;
+        }
+        async updateDiscountRules(productId, rules, ruleIdsToDelete = [], callback, confirmationCallback) {
+            let promotionAddress = this.getContractAddress('Promotion');
+            if (!promotionAddress)
+                throw new Error('Promotion contract not found');
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
+            this.registerSendTxEvents({
+                transactionHash: callback,
+                confirmation: confirmationCallback
+            });
+            let receipt = await promotion.updateDiscountRules({
+                productId,
+                rules: rules || [],
+                ruleIdsToDelete
+            });
+            return receipt;
+        }
+        async updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback) {
+            let commissionAddress = this.getContractAddress('Commission');
+            let productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
+            const wallet = eth_wallet_1.Wallet.getClientInstance();
+            const commission = new scom_product_contract_1.Contracts.Commission(wallet, commissionAddress);
+            const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
+            let selectors = ["subscribe"];
+            selectors = selectors.map(e => e + "(" + productMarketplace._abi.filter(f => f.name == e)[0].inputs.map(f => f.type).join(',') + ")");
+            selectors = selectors.map(e => wallet.soliditySha3(e).substring(0, 10));
+            let campaign = {
+                id: productId,
+                affiliatesRequireApproval: true,
+                selectors: selectors,
+                commissionRate: eth_wallet_1.Utils.toDecimals(commissionRate, 6),
+                affiliates: affiliates
+            };
+            let receipt;
+            try {
+                this.registerSendTxEvents({
+                    transactionHash: callback,
+                    confirmation: confirmationCallback
+                });
+                receipt = await commission.updateCampaign(campaign);
+            }
+            catch (err) {
+                console.error(err);
+            }
+            return receipt;
+        }
     }
     exports.SubscriptionModel = SubscriptionModel;
 });

@@ -1,5 +1,6 @@
 /// <reference path="@ijstech/eth-wallet/index.d.ts" />
 /// <reference path="@scom/scom-dapp-container/@ijstech/eth-wallet/index.d.ts" />
+/// <reference path="@ijstech/eth-contract/index.d.ts" />
 /// <amd-module name="@scom/scom-ton-subscription/index.css.ts" />
 declare module "@scom/scom-ton-subscription/index.css.ts" {
     export const inputStyle: string;
@@ -77,7 +78,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
             label: string;
             value: string;
         }[];
-        getContractAddress(type: ContractType, chainId: number): any;
+        getContractAddress(type: ContractType): any;
         getRpcWallet(): import("@ijstech/eth-wallet").IRpcWallet;
         getDefaultData(): {
             defaultChainId: number;
@@ -98,10 +99,12 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         getProductInfo(productId: number): Promise<IProductInfo>;
         getProductId(nftAddress: string): Promise<number>;
         getDiscountRules(productId: number): Promise<IDiscountRule[]>;
-        subscribe(productId: number, startTime: number, duration: number, referrer: string, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
-        renewSubscription(productId: number, duration: number, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
-        updateDiscountRules(productId: number, rules: IDiscountRule[], ruleIdsToDelete?: number[], callback?: any, confirmationCallback?: any): Promise<void>;
-        updateCommissionCampaign(productId: number, commissionRate: string, affiliates: string[], callback?: any, confirmationCallback?: any): Promise<void>;
+        private registerSendTxEvents;
+        private getDiscount;
+        subscribe(productId: number, startTime: number, duration: number, referrer: string, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<any>;
+        renewSubscription(productId: number, duration: number, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<any>;
+        updateDiscountRules(productId: number, rules: IDiscountRule[], ruleIdsToDelete?: number[], callback?: any, confirmationCallback?: any): Promise<import("@ijstech/eth-contract").TransactionReceipt>;
+        updateCommissionCampaign(productId: number, commissionRate: string, affiliates: string[], callback?: any, confirmationCallback?: any): Promise<any>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
