@@ -12,9 +12,7 @@
     "@scom/scom-dapp-container": "*",
     "@ijstech/eth-contract": "*",
     "@ijstech/eth-wallet": "*",
-    "@scom/scom-token-list": "*",
-    "@scom/scom-network-list": "*",
-    "@scom/scom-product-contract": "*"
+    "@scom/scom-token-list": "*"
   },
   "menus": [
     {

@@ -1,116 +1,80 @@
-/// <reference path="@ijstech/eth-wallet/index.d.ts" />
-/// <reference path="@scom/scom-dapp-container/@ijstech/eth-wallet/index.d.ts" />
-/// <reference path="@ijstech/eth-contract/index.d.ts" />
 /// <amd-module name="@scom/scom-ton-subscription/index.css.ts" />
 declare module "@scom/scom-ton-subscription/index.css.ts" {
     export const inputStyle: string;
 }
 /// <amd-module name="@scom/scom-ton-subscription/interface.ts" />
 declare module "@scom/scom-ton-subscription/interface.ts" {
-    import { BigNumber, IClientSideProvider } from "@ijstech/eth-wallet";
-    import { ITokenObject } from "@scom/scom-token-list";
+    import { IClientSideProvider } from "@ijstech/eth-wallet";
+    export enum TokenType {
+        ERC20 = "ERC20",
+        ERC721 = "ERC721",
+        ERC1155 = "ERC1155"
+    }
+    export enum PaymentModel {
+        OneTimePurchase = "OneTimePurchase",
+        Subscription = "Subscription"
+    }
+    export interface ISubscriptionDiscountRule {
+        id: number;
+        name: string;
+        startTime: number;
+        endTime: number;
+        minDuration?: number;
+        discountType: 'Percentage' | 'FixedAmount';
+        discountPercentage?: number;
+        fixedPrice?: number;
+        discountApplication: number;
+    }
     export interface ITonSubscription {
-        productId?: number;
+        name?: string;
+        paymentModel?: PaymentModel;
         chainId?: number;
-        nftAddress?: string;
-        tokenToMint?: string;
-        isCustomMintToken?: boolean;
-        customMintToken?: string;
-        priceToMint?: number;
-        maxQty?: number;
+        tokenAddress?: string;
+        tokenType?: TokenType;
+        tokenId?: number;
+        tokenAmount?: string;
+        currency?: string;
         durationInDays?: number;
-        priceDuration?: number;
-        txnMaxQty?: number;
-        uri?: string;
+        memberIds?: string[];
+        discountRules?: ISubscriptionDiscountRule[];
+        commissionRate?: number;
+        affiliates?: string[];
         recipient?: string;
-        logoUrl?: string;
-        description?: string;
-        link?: string;
         discountRuleId?: number;
         referrer?: string;
-        defaultChainId?: number;
-        wallets?: IWalletPlugin[];
-        networks?: any[];
-        showHeader?: boolean;
     }
     export interface IWalletPlugin {
         name: string;
         packageName?: string;
         provider?: IClientSideProvider;
     }
-    export interface IProductInfo {
-        productType: BigNumber;
-        productId: BigNumber;
-        uri: string;
-        quantity: BigNumber;
-        price: BigNumber;
-        maxQuantity: BigNumber;
-        maxPrice: BigNumber;
-        token: ITokenObject;
-        status: BigNumber;
-        nft: string;
-        nftId: BigNumber;
-        priceDuration: BigNumber;
-    }
-    export interface IDiscountRule {
-        id: number;
-        minDuration: BigNumber;
-        discountPercentage: number;
-        fixedPrice: BigNumber;
-        startTime: number;
-        endTime: number;
-        discountApplication: number;
-    }
 }
 /// <amd-module name="@scom/scom-ton-subscription/model.ts" />
 declare module "@scom/scom-ton-subscription/model.ts" {
     import { BigNumber } from "@ijstech/eth-wallet";
-    import { IDiscountRule, IProductInfo, IWalletPlugin } from "@scom/scom-ton-subscription/interface.ts";
+    import { IWalletPlugin } from "@scom/scom-ton-subscription/interface.ts";
     import { ITokenObject } from '@scom/scom-token-list';
-    type ContractType = 'ProductMarketplace' | 'OneTimePurchaseNFT' | 'SubscriptionNFTFactory' | 'Promotion' | 'Commission';
     export class SubscriptionModel {
-        private rpcWalletId;
-        private networkMap;
-        private infuraId;
-        private contractInfoByChain;
         get wallets(): IWalletPlugin[];
+        get tokens(): ITokenObject[];
         get durationUnits(): {
             label: string;
             value: string;
         }[];
-        getContractAddress(type: ContractType): any;
-        getRpcWallet(): import("@ijstech/eth-wallet").IRpcWallet;
-        getDefaultData(): {
-            defaultChainId: number;
-            networks: {
-                chainId: number;
-            }[];
-            wallets: {
-                name: string;
-            }[];
-        };
         getDurationInDays(duration: number, unit: 'days' | 'months' | 'years', startDate: any): number;
         formatNumber(value: number | string | BigNumber, decimalFigures?: number): string;
         initWallet(): Promise<void>;
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
-        initRpcWallet(defaultChainId: number): string;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
-        getProductInfo(productId: number): Promise<IProductInfo>;
-        getProductId(nftAddress: string): Promise<number>;
-        getDiscountRules(productId: number): Promise<IDiscountRule[]>;
-        private registerSendTxEvents;
-        private getDiscount;
-        subscribe(productId: number, startTime: number, duration: number, referrer: string, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<any>;
-        renewSubscription(productId: number, duration: number, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<any>;
-        updateDiscountRules(productId: number, rules: IDiscountRule[], ruleIdsToDelete?: number[], callback?: any, confirmationCallback?: any): Promise<import("@ijstech/eth-contract").TransactionReceipt>;
-        updateCommissionCampaign(productId: number, commissionRate: string, affiliates: string[], callback?: any, confirmationCallback?: any): Promise<any>;
+        subscribe(startTime: number, duration: number, referrer: string, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
+        renewSubscription(duration: number, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
 declare module "@scom/scom-ton-subscription" {
     import { ControlElement, Module } from '@ijstech/components';
-    import { IDiscountRule, ITonSubscription } from "@scom/scom-ton-subscription/interface.ts";
+    import { ITonSubscription } from "@scom/scom-ton-subscription/interface.ts";
     interface ScomTonSubscriptionElement extends ControlElement {
     }
     global {
@@ -137,15 +101,13 @@ declare module "@scom/scom-ton-subscription" {
         private lblOrderTotal;
         private iconOrderTotal;
         private btnSubmit;
-        private pnlUnsupportedNetwork;
         private subscriptionModel;
-        private productInfo;
-        private discountRules;
         private discountApplied;
         private _isRenewal;
         private _renewalDate;
         private tokenAmountIn;
         private _data;
+        private token;
         onSubscribe: () => void;
         get isRenewal(): boolean;
         set isRenewal(value: boolean);
@@ -160,13 +122,9 @@ declare module "@scom/scom-ton-subscription" {
             target: string;
             getData: any;
             setData: (data: ITonSubscription) => Promise<void>;
-            setupData: (data: ITonSubscription) => Promise<boolean>;
-            updateDiscountRules: (productId: number, rules: IDiscountRule[], ruleIdsToDelete?: number[]) => Promise<unknown>;
-            updateCommissionCampaign: (productId: number, commissionRate: string, affiliates: string[]) => Promise<unknown>;
             getTag: any;
             setTag: any;
         }[];
-        private resetRpcWallet;
         private getData;
         private setData;
         private getTag;

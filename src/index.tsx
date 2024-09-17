@@ -16,9 +16,10 @@ import {
 } from '@ijstech/components';
 import { BigNumber, Utils } from '@ijstech/eth-wallet';
 import ScomDappContainer from '@scom/scom-dapp-container';
+import { ITokenObject } from '@scom/scom-token-list';
 import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
-import { IDiscountRule, IProductInfo, ITonSubscription } from './interface';
+import { ISubscriptionDiscountRule, ITonSubscription } from './interface';
 import { SubscriptionModel } from './model';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -51,20 +52,14 @@ export default class ScomTonSubscription extends Module {
     private lblOrderTotal: Label;
     private iconOrderTotal: Icon;
     private btnSubmit: Button;
-    private pnlUnsupportedNetwork: StackLayout;
 
     private subscriptionModel: SubscriptionModel;
-    private productInfo: IProductInfo;
-    private discountRules: IDiscountRule[];
-    private discountApplied: IDiscountRule;
+    private discountApplied: ISubscriptionDiscountRule;
     private _isRenewal = false;
     private _renewalDate: number;
     private tokenAmountIn: string;
-    private _data: ITonSubscription = {
-        wallets: [],
-        networks: [],
-        defaultChainId: 0
-    };
+    private _data: ITonSubscription = {};
+    private token: ITokenObject;
     public onSubscribe: () => void;
 
     get isRenewal() {
@@ -79,7 +74,7 @@ export default class ScomTonSubscription extends Module {
     }
     set renewalDate(value: number) {
         this._renewalDate = value;
-        if (this.productInfo) {
+        if (this.edtStartDate) {
             this.edtStartDate.value = value > 0 ? moment(value * 1000) : moment();
             this.onDurationChanged();
         }
@@ -100,92 +95,22 @@ export default class ScomTonSubscription extends Module {
 
     hideLoading() {
         this.pnlLoading.visible = false;
-        this.pnlBody.visible = !this.pnlUnsupportedNetwork.visible;
+        this.pnlBody.visible = true;
     }
 
     getConfigurators() {
-        const defaultData = this.subscriptionModel.getDefaultData();
         return [
             {
                 name: 'Builder Configurator',
                 target: 'Builders',
                 getData: this.getData.bind(this),
                 setData: async (data: ITonSubscription) => {
-                    await this.setData({ ...defaultData, ...data });
-                },
-                setupData: async (data: ITonSubscription) => {
-                    this._data = { ...data };
-                    this.subscriptionModel.initWallet();
-                    if (!this.subscriptionModel.isClientWalletConnected()) {
-                        this.subscriptionModel.connectWallet();
-                        return;
-                    }
-                    let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
-                    if (productId) {
-                        this._data.productId = productId;
-                        this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
-                        this._data.priceToMint = Utils.fromDecimals(this.productInfo.price, this.productInfo.token.decimals).toNumber();
-                        this._data.tokenToMint = this.productInfo.token.address;
-                        this._data.durationInDays = Math.ceil((this.productInfo.priceDuration?.toNumber() || 0) / 86400);
-                    }
-                    return true;
-                },
-                updateDiscountRules: async (productId: number, rules: IDiscountRule[], ruleIdsToDelete: number[] = []) => {
-                    return new Promise(async (resolve, reject) => {
-                        const callback = (err: Error, receipt?: string) => {
-                            if (err) {
-                                this.showTxStatusModal('error', err);
-                            }
-                        };
-                        const confirmationCallback = async (receipt: any) => {
-                            const discountRules = await this.subscriptionModel.getDiscountRules(this._data.productId);
-                            resolve(discountRules);
-                        };
-                        try {
-                            await this.subscriptionModel.updateDiscountRules(productId, rules, ruleIdsToDelete, callback, confirmationCallback);
-                        } catch (error) {
-                            this.showTxStatusModal('error', 'Something went wrong updating discount rule!');
-                            console.log('updateDiscountRules', error);
-                            reject(error);
-                        }
-                    });
-                },
-                updateCommissionCampaign: async (productId: number, commissionRate: string, affiliates: string[]) => {
-                    return new Promise(async (resolve, reject) => {
-                        const callback = (err: Error, receipt?: string) => {
-                            if (err) {
-                                this.showTxStatusModal('error', err);
-                            }
-                        };
-                        const confirmationCallback = async (receipt: any) => {
-                            resolve(true);
-                        };
-                        try {
-                            await this.subscriptionModel.updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback);
-                        } catch (error) {
-                            this.showTxStatusModal('error', 'Something went wrong updating commission campaign!');
-                            console.log('updateCommissionCampaign', error);
-                            reject(error);
-                        }
-                    });
+                    await this.setData({ ...data });
                 },
                 getTag: this.getTag.bind(this),
                 setTag: this.setTag.bind(this)
             },
         ]
-    }
-
-    private async resetRpcWallet() {
-        await this.subscriptionModel.initRpcWallet(this._data.chainId || this._data.defaultChainId);
-        const chainId = this._data.chainId;
-        const data = {
-            defaultChainId: chainId || this._data.defaultChainId,
-            wallets: this.subscriptionModel.wallets,
-            networks: chainId ? [{ chainId: chainId }] : this._data.networks,
-            showHeader: false,
-            rpcWalletId: this.subscriptionModel.getRpcWallet().instanceId
-        }
-        if (this.containerDapp?.setData) await this.containerDapp.setData(data);
     }
 
     private getData() {
@@ -195,94 +120,81 @@ export default class ScomTonSubscription extends Module {
     private async setData(data: ITonSubscription) {
         this.showLoading();
         this._data = data;
-        this.discountRules = [];
         this.edtStartDate.value = undefined;
         this.edtDuration.value = '';
         this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
-        await this.resetRpcWallet();
         await this.subscriptionModel.initWallet();
-        if (!this._data.productId && this._data.nftAddress) {
-          let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
-          if (productId) this._data.productId = productId;
-        }
         await this.refreshDApp();
         this.hideLoading();
     }
 
     private getTag() {
-      return this.tag;
+        return this.tag;
     }
-  
+
     private updateTag(type: 'light' | 'dark', value: any) {
-      this.tag[type] = this.tag[type] ?? {};
-      for (let prop in value) {
-        if (value.hasOwnProperty(prop))
-          this.tag[type][prop] = value[prop];
-      }
-    }
-  
-    private async setTag(value: any) {
-      const newValue = value || {};
-      if (!this.tag) this.tag = {}
-      for (let prop in newValue) {
-        if (newValue.hasOwnProperty(prop)) {
-          if (prop === 'light' || prop === 'dark')
-            this.updateTag(prop, newValue[prop]);
-          else
-            this.tag[prop] = newValue[prop];
+        this.tag[type] = this.tag[type] ?? {};
+        for (let prop in value) {
+            if (value.hasOwnProperty(prop))
+                this.tag[type][prop] = value[prop];
         }
-      }
-      if (this.containerDapp)
-        this.containerDapp.setTag(this.tag);
-      this.updateTheme();
+    }
+
+    private async setTag(value: any) {
+        const newValue = value || {};
+        if (!this.tag) this.tag = {}
+        for (let prop in newValue) {
+            if (newValue.hasOwnProperty(prop)) {
+                if (prop === 'light' || prop === 'dark')
+                    this.updateTag(prop, newValue[prop]);
+                else
+                    this.tag[prop] = newValue[prop];
+            }
+        }
+        if (this.containerDapp)
+            this.containerDapp.setTag(this.tag);
+        this.updateTheme();
     }
 
     private updateStyle(name: string, value: any) {
-      value ?
-        this.style.setProperty(name, value) :
-        this.style.removeProperty(name);
+        value ?
+            this.style.setProperty(name, value) :
+            this.style.removeProperty(name);
     }
-  
+
     private updateTheme() {
-      const themeVar = this.containerDapp?.theme || 'dark';
-      this.updateStyle('--text-primary', this.tag[themeVar]?.fontColor);
-      this.updateStyle('--background-main', this.tag[themeVar]?.backgroundColor);
-      this.updateStyle('--input-font_color', this.tag[themeVar]?.inputFontColor);
-      this.updateStyle('--input-background', this.tag[themeVar]?.inputBackgroundColor);
-      this.updateStyle('--colors-primary-main', this.tag[themeVar]?.buttonBackgroundColor);
+        const themeVar = this.containerDapp?.theme || 'dark';
+        this.updateStyle('--text-primary', this.tag[themeVar]?.fontColor);
+        this.updateStyle('--background-main', this.tag[themeVar]?.backgroundColor);
+        this.updateStyle('--input-font_color', this.tag[themeVar]?.inputFontColor);
+        this.updateStyle('--input-background', this.tag[themeVar]?.inputBackgroundColor);
+        this.updateStyle('--colors-primary-main', this.tag[themeVar]?.buttonBackgroundColor);
     }
 
     private async refreshDApp() {
         try {
             this.determineBtnSubmitCaption();
-            this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
-            if (this.productInfo) {
-                this.discountRules = await this.subscriptionModel.getDiscountRules(this._data.productId);
-                this.pnlBody.visible = true;
-                this.pnlUnsupportedNetwork.visible = false;
-                this.edtStartDate.value = this.isRenewal && this.renewalDate ? moment(this.renewalDate * 1000) : moment();
-                this.pnlStartDate.visible = !this.isRenewal;
-                this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
-                this.lblStartDate.visible = this.isRenewal;
-                const rule = this._data.discountRuleId ? this.discountRules.find(rule => rule.id === this._data.discountRuleId) : null;
-                const isExpired = rule && rule.endTime && rule.endTime < moment().unix();
-                if (isExpired) this._data.discountRuleId = undefined;
-                if (rule && !isExpired) {
-                    if (!this.isRenewal && rule.startTime && rule.startTime > this.edtStartDate.value.unix()) {
-                        this.edtStartDate.value = moment(rule.startTime * 1000);
-                    }
-                    this.edtDuration.value = rule.minDuration.div(86400).toNumber();
-                    this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
-                    this.discountApplied = rule;
-                    this._updateEndDate();
-                    this._updateTotalAmount();
-                } else {
-                    this.edtDuration.value = Math.ceil((this.productInfo.priceDuration?.toNumber() || 0) / 86400);
-                    this.onDurationChanged();
+            this.pnlBody.visible = true;
+            this.token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
+            this.edtStartDate.value = this.isRenewal && this.renewalDate ? moment(this.renewalDate * 1000) : moment();
+            this.pnlStartDate.visible = !this.isRenewal;
+            this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
+            this.lblStartDate.visible = this.isRenewal;
+            const rule = this._data.discountRuleId ? this._data.discountRules[this._data.discountRuleId] : null;
+            const isExpired = rule && rule.endTime && rule.endTime < moment().unix();
+            if (isExpired) this._data.discountRuleId = undefined;
+            if (rule && !isExpired) {
+                if (!this.isRenewal && rule.startTime && rule.startTime > this.edtStartDate.value.unix()) {
+                    this.edtStartDate.value = moment(rule.startTime * 1000);
                 }
+                this.edtDuration.value = new BigNumber(rule.minDuration).div(86400).toNumber();
+                this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
+                this.discountApplied = rule;
+                this._updateEndDate();
+                this._updateTotalAmount();
             } else {
-                this.pnlBody.visible = false;
-                this.pnlUnsupportedNetwork.visible = true;
+                this.edtDuration.value = this._data.durationInDays || "";
+                this.onDurationChanged();
             }
         } catch (error) {
             console.error(error);
@@ -301,23 +213,23 @@ export default class ScomTonSubscription extends Module {
 
     private _updateDiscount() {
         this.discountApplied = undefined;
-        if (!this.discountRules?.length || !this.duration || !this.edtStartDate.value) return;
-        const price = Utils.fromDecimals(this.productInfo.price, this.productInfo.token.decimals);
+        if (!this._data.discountRules?.length || !this.duration || !this.edtStartDate.value) return;
+        const price = new BigNumber(this._data.tokenAmount);
         const startTime = this.edtStartDate.value.unix();
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
         const durationInSec = days * 86400;
         let discountAmount: BigNumber;
-        for (let rule of this.discountRules) {
+        for (let rule of this._data.discountRules) {
             if (rule.discountApplication === 0 && this.isRenewal) continue;
             if (rule.discountApplication === 1 && !this.isRenewal) continue;
-            if ((rule.startTime > 0 && startTime < rule.startTime) || (rule.endTime > 0 && startTime > rule.endTime) || rule.minDuration.gt(durationInSec)) continue;
+            if ((rule.startTime > 0 && startTime < rule.startTime) || (rule.endTime > 0 && startTime > rule.endTime) || rule.minDuration > durationInSec) continue;
             let basePrice: BigNumber = price;
             if (rule.discountPercentage > 0) {
                 basePrice = price.times(1 - rule.discountPercentage / 100)
-            } else if (rule.fixedPrice.gt(0)) {
-                basePrice = rule.fixedPrice;
+            } else if (rule.fixedPrice > 0) {
+                basePrice = new BigNumber(rule.fixedPrice);
             }
-            let tmpDiscountAmount = price.minus(basePrice).div(this.productInfo.priceDuration.div(86400)).times(days);
+            let tmpDiscountAmount = price.minus(basePrice).div(this._data.durationInDays).times(days);
             if (!this.discountApplied || tmpDiscountAmount.gt(discountAmount)) {
                 this.discountApplied = rule;
                 discountAmount = tmpDiscountAmount;
@@ -327,8 +239,8 @@ export default class ScomTonSubscription extends Module {
 
     private _updateTotalAmount() {
         const duration = Number(this.edtDuration.value) || 0;
-        if (!duration) this.lblOrderTotal.caption = `0 ${this.productInfo.token?.symbol || ''}`;
-        const price = this.productInfo.price;
+        if (!duration) this.lblOrderTotal.caption = `0 ${this.token?.symbol || ''}`;
+        const price = new BigNumber(this._data.tokenAmount);
         let basePrice: BigNumber = price;
         this.pnlDiscount.visible = false;
         if (this.discountApplied) {
@@ -336,23 +248,21 @@ export default class ScomTonSubscription extends Module {
                 basePrice = price.times(1 - this.discountApplied.discountPercentage / 100);
                 this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}% off)`;
                 this.pnlDiscount.visible = true;
-            } else if (this.discountApplied.fixedPrice.gt(0)) {
-                basePrice = this.discountApplied.fixedPrice as BigNumber;
+            } else if (this.discountApplied.fixedPrice> 0) {
+                basePrice = new BigNumber(this.discountApplied.fixedPrice);
                 this.lblDiscount.caption = "Discount";
                 this.pnlDiscount.visible = true;
             }
         }
-        const pricePerDay = basePrice.div(this.productInfo.priceDuration.div(86400));
+        const pricePerDay = basePrice.div(this._data.durationInDays);
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-        const amountRaw = pricePerDay.times(days);
-        const amount = Utils.fromDecimals(amountRaw, this.productInfo.token.decimals);
+        const amount = pricePerDay.times(days);
         this.tokenAmountIn = amount.toFixed();
         if (this.discountApplied) {
-            const discountAmountRaw = price.minus(basePrice).div(this.productInfo.priceDuration.div(86400)).times(days);
-            const discountAmount = Utils.fromDecimals(discountAmountRaw, this.productInfo.token.decimals);
-            this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.productInfo.token?.symbol || ''}`;
+            const discountAmount = price.minus(basePrice).div(this._data.durationInDays).times(days);
+            this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
         }
-        this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(amount, 6)} ${this.productInfo.token?.symbol || ''}`;
+        this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(amount, 6)} ${this.token?.symbol || ''}`;
     }
 
     private onStartDateChanged() {
@@ -380,7 +290,6 @@ export default class ScomTonSubscription extends Module {
     private determineBtnSubmitCaption() {
         if (!this.subscriptionModel.isClientWalletConnected()) {
             this.btnSubmit.caption = 'Connect Wallet';
-            this.btnSubmit.enabled = true;
         }
         else {
             this.btnSubmit.caption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
@@ -411,7 +320,7 @@ export default class ScomTonSubscription extends Module {
     }
 
     private async doSubmitAction() {
-        if (!this._data || !this._data.productId) return;
+        if (!this._data) return;
         if (!this.edtStartDate.value) {
             this.showTxStatusModal('error', 'Start Date Required');
             return;
@@ -430,13 +339,12 @@ export default class ScomTonSubscription extends Module {
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
         const duration = days * 86400;
         const confirmationCallback = async () => {
-            this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
             if (this.onSubscribe) this.onSubscribe();
         };
         if (this.isRenewal) {
-            await this.subscriptionModel.renewSubscription(this._data.productId, duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
+            await this.subscriptionModel.renewSubscription(duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
         } else {
-            await this.subscriptionModel.subscribe(this._data.productId, startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
+            await this.subscriptionModel.subscribe(startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
         }
     }
 
@@ -446,6 +354,12 @@ export default class ScomTonSubscription extends Module {
         const durationUnits = this.subscriptionModel.durationUnits;
         this.comboDurationUnit.items = durationUnits;
         this.comboDurationUnit.selectedItem = durationUnits[0];
+        const data = {
+            wallets: this.subscriptionModel.wallets,
+            networks: [],
+            showHeader: false,
+        }
+        if (this.containerDapp?.setData) await this.containerDapp.setData(data);
     }
 
     render() {
@@ -562,12 +476,8 @@ export default class ScomTonSubscription extends Module {
                                             background={{ color: Theme.background.gradient }}
                                             border={{ radius: 12 }}
                                             onClick={this.onSubmit}
-                                            enabled={false}
                                         ></i-button>
                                     </i-stack>
-                                </i-stack>
-                                <i-stack id='pnlUnsupportedNetwork' direction="vertical" alignItems="center" visible={false}>
-                                    <i-label caption='This network or this token is not supported.' font={{ size: '1.5rem' }}></i-label>
                                 </i-stack>
                             </i-stack>
                         </i-stack>

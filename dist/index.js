@@ -20,56 +20,25 @@ define("@scom/scom-ton-subscription/interface.ts", ["require", "exports"], funct
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
 });
-define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet", "@scom/scom-product-contract", "@scom/scom-network-list", "@scom/scom-token-list"], function (require, exports, components_2, eth_wallet_1, scom_product_contract_1, scom_network_list_1, scom_token_list_1) {
+define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet"], function (require, exports, components_2, eth_wallet_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SubscriptionModel = void 0;
     class SubscriptionModel {
-        constructor() {
-            this.rpcWalletId = '';
-            this.networkMap = {};
-            this.infuraId = 'adc596bf88b648e2a8902bc9093930c5';
-            this.contractInfoByChain = {
-                "97": {
-                    "ProductMarketplace": {
-                        "address": "0x93e684ad2AEE178e23675fbE5bA88c3e4e7467f4"
-                    },
-                    "OneTimePurchaseNFT": {
-                        "address": "0x5aE9c7f08572D52e2DB8508B502D767A1ECf21Bf"
-                    },
-                    "SubscriptionNFTFactory": {
-                        "address": "0x0055e4edb49425A29784Bd9a7986F5b56dcc8f6b"
-                    },
-                    "Promotion": {
-                        "address": "0x13d23201a8A6661881d701E1cF56A30A8eb0aE90"
-                    },
-                    "Commission": {
-                        "address": "0xcdc39C8bC8F9fDAF31D79f461B47477606770c62"
-                    }
-                },
-                "43113": {
-                    "ProductMarketplace": {
-                        "address": "0xeC3747eAbf71D4BDF15Abb70398C04B642363D10"
-                    },
-                    "OneTimePurchaseNFT": {
-                        "address": "0x404eeCC44F7aFc1f7561b2A9bC475513206D4b15"
-                    },
-                    "SubscriptionNFTFactory": {
-                        "address": "0x9231761Bd5f32c8f6465d82168BAdaB109D23290"
-                    },
-                    "Promotion": {
-                        "address": "0x22786FF4E595f1B517242549ec1D263e62dc6F26"
-                    },
-                    "Commission": {
-                        "address": "0x2Ed01CB805e7f52c92cfE9eC02E7Dc899cA53BCa"
-                    }
-                }
-            };
-        }
         get wallets() {
             return [
                 {
-                    name: 'metamask'
+                    name: 'tonwallet'
+                }
+            ];
+        }
+        get tokens() {
+            return [
+                {
+                    chainId: undefined,
+                    name: "Toncoin",
+                    decimals: 18,
+                    symbol: "TON"
                 }
             ];
         }
@@ -88,33 +57,6 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                     value: 'years'
                 }
             ];
-        }
-        getContractAddress(type) {
-            const wallet = this.getRpcWallet();
-            const chainId = wallet?.chainId;
-            const contracts = this.contractInfoByChain[chainId] || {};
-            return contracts[type]?.address;
-        }
-        getRpcWallet() {
-            return this.rpcWalletId ? eth_wallet_1.Wallet.getRpcWalletInstance(this.rpcWalletId) : null;
-        }
-        getDefaultData() {
-            return {
-                "defaultChainId": 43113,
-                "networks": [
-                    {
-                        "chainId": 43113
-                    },
-                    {
-                        "chainId": 97
-                    }
-                ],
-                "wallets": [
-                    {
-                        "name": "metamask"
-                    }
-                ]
-            };
         }
         getDurationInDays(duration, unit, startDate) {
             if (unit === 'days') {
@@ -138,50 +80,10 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         ;
         async initWallet() {
             await eth_wallet_1.Wallet.getClientInstance().init();
-            await this.getRpcWallet()?.init();
         }
         async connectWallet() { }
         isClientWalletConnected() {
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            return wallet.isConnected;
-        }
-        initRpcWallet(defaultChainId) {
-            if (this.rpcWalletId) {
-                return this.rpcWalletId;
-            }
-            const clientWallet = eth_wallet_1.Wallet.getClientInstance();
-            const networkList = Object.values(components_2.application.store?.networkMap || []);
-            const instanceId = clientWallet.initRpcWallet({
-                networks: networkList,
-                defaultChainId,
-                infuraId: components_2.application.store?.infuraId,
-                multicalls: components_2.application.store?.multicalls
-            });
-            this.rpcWalletId = instanceId;
-            if (clientWallet.address) {
-                const rpcWallet = eth_wallet_1.Wallet.getRpcWalletInstance(instanceId);
-                rpcWallet.address = clientWallet.address;
-            }
-            const defaultNetworkList = (0, scom_network_list_1.default)();
-            const defaultNetworkMap = defaultNetworkList.reduce((acc, cur) => {
-                acc[cur.chainId] = cur;
-                return acc;
-            }, {});
-            for (let network of networkList) {
-                const networkInfo = defaultNetworkMap[network.chainId];
-                if (!networkInfo)
-                    continue;
-                if (this.infuraId && network.rpcUrls && network.rpcUrls.length > 0) {
-                    for (let i = 0; i < network.rpcUrls.length; i++) {
-                        network.rpcUrls[i] = network.rpcUrls[i].replace(/{InfuraId}/g, this.infuraId);
-                    }
-                }
-                this.networkMap[network.chainId] = {
-                    ...networkInfo,
-                    ...network
-                };
-            }
-            return instanceId;
+            return true;
         }
         async getTokenInfo(address, chainId) {
             let token;
@@ -203,316 +105,9 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             }
             return token;
         }
-        async getProductInfo(productId) {
-            const productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
-            if (!productMarketplaceAddress)
-                return null;
-            try {
-                const wallet = this.getRpcWallet();
-                const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
-                const product = await productMarketplace.products(productId);
-                const chainId = wallet.chainId;
-                if (product.token && product.token === eth_wallet_1.Utils.nullAddress) {
-                    let net = (0, scom_network_list_1.default)().find(net => net.chainId === chainId);
-                    return {
-                        ...product,
-                        token: {
-                            chainId: wallet.chainId,
-                            address: product.token,
-                            decimals: net.nativeCurrency.decimals,
-                            symbol: net.nativeCurrency.symbol,
-                            name: net.nativeCurrency.symbol,
-                        }
-                    };
-                }
-                const _tokenList = scom_token_list_1.tokenStore.getTokenList(chainId);
-                let token = _tokenList.find(token => product.token && token.address && token.address.toLowerCase() === product.token.toLowerCase());
-                if (!token && product.token) {
-                    token = await this.getTokenInfo(product.token, chainId);
-                }
-                return {
-                    ...product,
-                    token
-                };
-            }
-            catch {
-                return null;
-            }
+        async subscribe(startTime, duration, referrer, discountRuleId = 0, callback, confirmationCallback) {
         }
-        async getProductId(nftAddress) {
-            let productId;
-            try {
-                const wallet = this.getRpcWallet();
-                const subscriptionNFT = new scom_product_contract_1.Contracts.SubscriptionNFT(wallet, nftAddress);
-                productId = (await subscriptionNFT.productId()).toNumber();
-            }
-            catch (err) {
-                console.log("product id not found");
-                console.error(err);
-            }
-            return productId;
-        }
-        async getDiscountRules(productId) {
-            let discountRules = [];
-            const promotionAddress = this.getContractAddress('Promotion');
-            if (!promotionAddress)
-                return discountRules;
-            try {
-                const wallet = this.getRpcWallet();
-                const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
-                const ruleCount = await promotion.getDiscountRuleCount(productId);
-                let contractCalls = [];
-                for (let i = 0; i < ruleCount.toNumber(); i++) {
-                    contractCalls.push({
-                        contract: promotion,
-                        methodName: 'discountRules',
-                        params: [productId, i],
-                        to: promotionAddress
-                    });
-                }
-                if (contractCalls.length === 0)
-                    return discountRules;
-                const multicallResults = await wallet.doMulticall(contractCalls);
-                for (let i = 0; i < multicallResults.length; i++) {
-                    const multicallResult = multicallResults[i];
-                    if (!multicallResult)
-                        continue;
-                    const discountRule = multicallResult;
-                    discountRules.push({
-                        id: discountRule.id.toNumber(),
-                        minDuration: discountRule.minDuration,
-                        discountPercentage: discountRule.discountPercentage.toNumber(),
-                        fixedPrice: eth_wallet_1.Utils.fromDecimals(discountRule.fixedPrice),
-                        startTime: discountRule.startTime.toNumber(),
-                        endTime: discountRule.endTime.toNumber(),
-                        discountApplication: discountRule.discountApplication.toNumber()
-                    });
-                }
-            }
-            catch (err) {
-                console.error('failed to get discount rules');
-            }
-            return discountRules;
-        }
-        registerSendTxEvents(sendTxEventHandlers) {
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            wallet.registerSendTxEvents({
-                transactionHash: (error, receipt) => {
-                    if (sendTxEventHandlers.transactionHash) {
-                        sendTxEventHandlers.transactionHash(error, receipt);
-                    }
-                },
-                confirmation: (receipt) => {
-                    if (sendTxEventHandlers.confirmation) {
-                        sendTxEventHandlers.confirmation(receipt);
-                    }
-                },
-            });
-        }
-        async getDiscount(productId, productPrice, discountRuleId) {
-            let basePrice = productPrice;
-            let promotionAddress = this.getContractAddress('Promotion');
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
-            const index = await promotion.discountRuleIdToIndex({ param1: productId, param2: discountRuleId });
-            const rule = await promotion.discountRules({ param1: productId, param2: index });
-            if (rule.discountPercentage.gt(0)) {
-                const discount = productPrice.times(rule.discountPercentage).div(100);
-                if (productPrice.gt(discount))
-                    basePrice = productPrice.minus(discount);
-            }
-            else if (rule.fixedPrice.gt(0)) {
-                basePrice = rule.fixedPrice;
-            }
-            else {
-                discountRuleId = 0;
-            }
-            return {
-                price: basePrice,
-                id: discountRuleId
-            };
-        }
-        async subscribe(productId, startTime, duration, referrer, discountRuleId = 0, callback, confirmationCallback) {
-            let commissionAddress = this.getContractAddress('Commission');
-            let productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            const commission = new scom_product_contract_1.Contracts.Commission(wallet, commissionAddress);
-            const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
-            const product = await productMarketplace.products(productId);
-            let basePrice = product.price;
-            if (discountRuleId !== 0) {
-                const discount = await this.getDiscount(productId, product.price, discountRuleId);
-                basePrice = discount.price;
-                if (discount.id === 0)
-                    discountRuleId = 0;
-            }
-            const amount = product.priceDuration.eq(duration) ? basePrice : basePrice.times(duration).div(product.priceDuration);
-            let tokenInAmount;
-            if (referrer) {
-                let campaign = await commission.getCampaign({ campaignId: productId, returnArrays: true });
-                const affiliates = (campaign?.affiliates || []).map(a => a.toLowerCase());
-                if (affiliates.includes(referrer.toLowerCase())) {
-                    const commissionRate = eth_wallet_1.Utils.fromDecimals(campaign.commissionRate, 6);
-                    tokenInAmount = new eth_wallet_1.BigNumber(amount).dividedBy(new eth_wallet_1.BigNumber(1).minus(commissionRate)).decimalPlaces(0, eth_wallet_1.BigNumber.ROUND_DOWN);
-                }
-            }
-            let receipt;
-            try {
-                this.registerSendTxEvents({
-                    transactionHash: callback,
-                    confirmation: confirmationCallback
-                });
-                if (product.token === eth_wallet_1.Utils.nullAddress) {
-                    if (!tokenInAmount || tokenInAmount.isZero()) {
-                        receipt = await productMarketplace.subscribe({
-                            to: wallet.address,
-                            productId: productId,
-                            startTime: startTime,
-                            duration: duration,
-                            discountRuleId: discountRuleId
-                        }, amount);
-                    }
-                    else {
-                        const txData = await productMarketplace.subscribe.txData({
-                            to: wallet.address,
-                            productId: productId,
-                            startTime: startTime,
-                            duration: duration,
-                            discountRuleId: discountRuleId
-                        }, amount);
-                        receipt = await commission.proxyCall({
-                            affiliate: referrer,
-                            campaignId: productId,
-                            amount: tokenInAmount,
-                            data: txData
-                        }, tokenInAmount);
-                    }
-                }
-                else {
-                    if (!tokenInAmount || tokenInAmount.isZero()) {
-                        receipt = await productMarketplace.subscribe({
-                            to: wallet.address,
-                            productId: productId,
-                            startTime: startTime,
-                            duration: duration,
-                            discountRuleId: discountRuleId
-                        });
-                    }
-                    else {
-                        const txData = await productMarketplace.subscribe.txData({
-                            to: wallet.address,
-                            productId: productId,
-                            startTime: startTime,
-                            duration: duration,
-                            discountRuleId: discountRuleId
-                        });
-                        receipt = await commission.proxyCall({
-                            affiliate: referrer,
-                            campaignId: productId,
-                            amount: tokenInAmount,
-                            data: txData
-                        });
-                    }
-                }
-            }
-            catch (err) {
-                console.error(err);
-                throw err;
-            }
-            return receipt;
-        }
-        async renewSubscription(productId, duration, discountRuleId = 0, callback, confirmationCallback) {
-            let productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
-            const product = await productMarketplace.products(productId);
-            const subscriptionNFT = new scom_product_contract_1.Contracts.SubscriptionNFT(wallet, product.nft);
-            let nftId = await subscriptionNFT.tokenOfOwnerByIndex({
-                owner: wallet.address,
-                index: 0
-            });
-            let basePrice = product.price;
-            if (discountRuleId !== 0) {
-                const discount = await this.getDiscount(productId, product.price, discountRuleId);
-                basePrice = discount.price;
-                if (discount.id === 0)
-                    discountRuleId = 0;
-            }
-            const amount = product.priceDuration.eq(duration) ? basePrice : basePrice.times(duration).div(product.priceDuration);
-            let receipt;
-            try {
-                this.registerSendTxEvents({
-                    transactionHash: callback,
-                    confirmation: confirmationCallback
-                });
-                if (product.token === eth_wallet_1.Utils.nullAddress) {
-                    receipt = await productMarketplace.renewSubscription({
-                        productId: productId,
-                        nftId: nftId,
-                        duration: duration,
-                        discountRuleId: discountRuleId
-                    }, amount);
-                }
-                else {
-                    receipt = await productMarketplace.renewSubscription({
-                        productId: productId,
-                        nftId: nftId,
-                        duration: duration,
-                        discountRuleId: discountRuleId
-                    });
-                }
-            }
-            catch (err) {
-                console.error(err);
-                throw err;
-            }
-            return receipt;
-        }
-        async updateDiscountRules(productId, rules, ruleIdsToDelete = [], callback, confirmationCallback) {
-            let promotionAddress = this.getContractAddress('Promotion');
-            if (!promotionAddress)
-                throw new Error('Promotion contract not found');
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            const promotion = new scom_product_contract_1.Contracts.Promotion(wallet, promotionAddress);
-            this.registerSendTxEvents({
-                transactionHash: callback,
-                confirmation: confirmationCallback
-            });
-            let receipt = await promotion.updateDiscountRules({
-                productId,
-                rules: rules || [],
-                ruleIdsToDelete
-            });
-            return receipt;
-        }
-        async updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback) {
-            let commissionAddress = this.getContractAddress('Commission');
-            let productMarketplaceAddress = this.getContractAddress('ProductMarketplace');
-            const wallet = eth_wallet_1.Wallet.getClientInstance();
-            const commission = new scom_product_contract_1.Contracts.Commission(wallet, commissionAddress);
-            const productMarketplace = new scom_product_contract_1.Contracts.ProductMarketplace(wallet, productMarketplaceAddress);
-            let selectors = ["subscribe"];
-            selectors = selectors.map(e => e + "(" + productMarketplace._abi.filter(f => f.name == e)[0].inputs.map(f => f.type).join(',') + ")");
-            selectors = selectors.map(e => wallet.soliditySha3(e).substring(0, 10));
-            let campaign = {
-                id: productId,
-                affiliatesRequireApproval: true,
-                selectors: selectors,
-                commissionRate: eth_wallet_1.Utils.toDecimals(commissionRate, 6),
-                affiliates: affiliates
-            };
-            let receipt;
-            try {
-                this.registerSendTxEvents({
-                    transactionHash: callback,
-                    confirmation: confirmationCallback
-                });
-                receipt = await commission.updateCampaign(campaign);
-            }
-            catch (err) {
-                console.error(err);
-            }
-            return receipt;
+        async renewSubscription(duration, discountRuleId = 0, callback, confirmationCallback) {
         }
     }
     exports.SubscriptionModel = SubscriptionModel;
@@ -525,11 +120,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         constructor() {
             super(...arguments);
             this._isRenewal = false;
-            this._data = {
-                wallets: [],
-                networks: [],
-                defaultChainId: 0
-            };
+            this._data = {};
             this.showTxStatusModal = (status, content, exMessage) => {
                 if (!this.txStatusModal)
                     return;
@@ -558,7 +149,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         set renewalDate(value) {
             this._renewalDate = value;
-            if (this.productInfo) {
+            if (this.edtStartDate) {
                 this.edtStartDate.value = value > 0 ? (0, components_3.moment)(value * 1000) : (0, components_3.moment)();
                 this.onDurationChanged();
             }
@@ -575,93 +166,21 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         hideLoading() {
             this.pnlLoading.visible = false;
-            this.pnlBody.visible = !this.pnlUnsupportedNetwork.visible;
+            this.pnlBody.visible = true;
         }
         getConfigurators() {
-            const defaultData = this.subscriptionModel.getDefaultData();
             return [
                 {
                     name: 'Builder Configurator',
                     target: 'Builders',
                     getData: this.getData.bind(this),
                     setData: async (data) => {
-                        await this.setData({ ...defaultData, ...data });
-                    },
-                    setupData: async (data) => {
-                        this._data = { ...data };
-                        this.subscriptionModel.initWallet();
-                        if (!this.subscriptionModel.isClientWalletConnected()) {
-                            this.subscriptionModel.connectWallet();
-                            return;
-                        }
-                        let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
-                        if (productId) {
-                            this._data.productId = productId;
-                            this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
-                            this._data.priceToMint = eth_wallet_2.Utils.fromDecimals(this.productInfo.price, this.productInfo.token.decimals).toNumber();
-                            this._data.tokenToMint = this.productInfo.token.address;
-                            this._data.durationInDays = Math.ceil((this.productInfo.priceDuration?.toNumber() || 0) / 86400);
-                        }
-                        return true;
-                    },
-                    updateDiscountRules: async (productId, rules, ruleIdsToDelete = []) => {
-                        return new Promise(async (resolve, reject) => {
-                            const callback = (err, receipt) => {
-                                if (err) {
-                                    this.showTxStatusModal('error', err);
-                                }
-                            };
-                            const confirmationCallback = async (receipt) => {
-                                const discountRules = await this.subscriptionModel.getDiscountRules(this._data.productId);
-                                resolve(discountRules);
-                            };
-                            try {
-                                await this.subscriptionModel.updateDiscountRules(productId, rules, ruleIdsToDelete, callback, confirmationCallback);
-                            }
-                            catch (error) {
-                                this.showTxStatusModal('error', 'Something went wrong updating discount rule!');
-                                console.log('updateDiscountRules', error);
-                                reject(error);
-                            }
-                        });
-                    },
-                    updateCommissionCampaign: async (productId, commissionRate, affiliates) => {
-                        return new Promise(async (resolve, reject) => {
-                            const callback = (err, receipt) => {
-                                if (err) {
-                                    this.showTxStatusModal('error', err);
-                                }
-                            };
-                            const confirmationCallback = async (receipt) => {
-                                resolve(true);
-                            };
-                            try {
-                                await this.subscriptionModel.updateCommissionCampaign(productId, commissionRate, affiliates, callback, confirmationCallback);
-                            }
-                            catch (error) {
-                                this.showTxStatusModal('error', 'Something went wrong updating commission campaign!');
-                                console.log('updateCommissionCampaign', error);
-                                reject(error);
-                            }
-                        });
+                        await this.setData({ ...data });
                     },
                     getTag: this.getTag.bind(this),
                     setTag: this.setTag.bind(this)
                 },
             ];
-        }
-        async resetRpcWallet() {
-            await this.subscriptionModel.initRpcWallet(this._data.chainId || this._data.defaultChainId);
-            const chainId = this._data.chainId;
-            const data = {
-                defaultChainId: chainId || this._data.defaultChainId,
-                wallets: this.subscriptionModel.wallets,
-                networks: chainId ? [{ chainId: chainId }] : this._data.networks,
-                showHeader: false,
-                rpcWalletId: this.subscriptionModel.getRpcWallet().instanceId
-            };
-            if (this.containerDapp?.setData)
-                await this.containerDapp.setData(data);
         }
         getData() {
             return this._data;
@@ -669,17 +188,10 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         async setData(data) {
             this.showLoading();
             this._data = data;
-            this.discountRules = [];
             this.edtStartDate.value = undefined;
             this.edtDuration.value = '';
             this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
-            await this.resetRpcWallet();
             await this.subscriptionModel.initWallet();
-            if (!this._data.productId && this._data.nftAddress) {
-                let productId = await this.subscriptionModel.getProductId(this._data.nftAddress);
-                if (productId)
-                    this._data.productId = productId;
-            }
             await this.refreshDApp();
             this.hideLoading();
         }
@@ -725,37 +237,29 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         async refreshDApp() {
             try {
                 this.determineBtnSubmitCaption();
-                this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
-                if (this.productInfo) {
-                    this.discountRules = await this.subscriptionModel.getDiscountRules(this._data.productId);
-                    this.pnlBody.visible = true;
-                    this.pnlUnsupportedNetwork.visible = false;
-                    this.edtStartDate.value = this.isRenewal && this.renewalDate ? (0, components_3.moment)(this.renewalDate * 1000) : (0, components_3.moment)();
-                    this.pnlStartDate.visible = !this.isRenewal;
-                    this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
-                    this.lblStartDate.visible = this.isRenewal;
-                    const rule = this._data.discountRuleId ? this.discountRules.find(rule => rule.id === this._data.discountRuleId) : null;
-                    const isExpired = rule && rule.endTime && rule.endTime < (0, components_3.moment)().unix();
-                    if (isExpired)
-                        this._data.discountRuleId = undefined;
-                    if (rule && !isExpired) {
-                        if (!this.isRenewal && rule.startTime && rule.startTime > this.edtStartDate.value.unix()) {
-                            this.edtStartDate.value = (0, components_3.moment)(rule.startTime * 1000);
-                        }
-                        this.edtDuration.value = rule.minDuration.div(86400).toNumber();
-                        this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
-                        this.discountApplied = rule;
-                        this._updateEndDate();
-                        this._updateTotalAmount();
+                this.pnlBody.visible = true;
+                this.token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
+                this.edtStartDate.value = this.isRenewal && this.renewalDate ? (0, components_3.moment)(this.renewalDate * 1000) : (0, components_3.moment)();
+                this.pnlStartDate.visible = !this.isRenewal;
+                this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
+                this.lblStartDate.visible = this.isRenewal;
+                const rule = this._data.discountRuleId ? this._data.discountRules[this._data.discountRuleId] : null;
+                const isExpired = rule && rule.endTime && rule.endTime < (0, components_3.moment)().unix();
+                if (isExpired)
+                    this._data.discountRuleId = undefined;
+                if (rule && !isExpired) {
+                    if (!this.isRenewal && rule.startTime && rule.startTime > this.edtStartDate.value.unix()) {
+                        this.edtStartDate.value = (0, components_3.moment)(rule.startTime * 1000);
                     }
-                    else {
-                        this.edtDuration.value = Math.ceil((this.productInfo.priceDuration?.toNumber() || 0) / 86400);
-                        this.onDurationChanged();
-                    }
+                    this.edtDuration.value = new eth_wallet_2.BigNumber(rule.minDuration).div(86400).toNumber();
+                    this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
+                    this.discountApplied = rule;
+                    this._updateEndDate();
+                    this._updateTotalAmount();
                 }
                 else {
-                    this.pnlBody.visible = false;
-                    this.pnlUnsupportedNetwork.visible = true;
+                    this.edtDuration.value = this._data.durationInDays || "";
+                    this.onDurationChanged();
                 }
             }
             catch (error) {
@@ -773,28 +277,28 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         _updateDiscount() {
             this.discountApplied = undefined;
-            if (!this.discountRules?.length || !this.duration || !this.edtStartDate.value)
+            if (!this._data.discountRules?.length || !this.duration || !this.edtStartDate.value)
                 return;
-            const price = eth_wallet_2.Utils.fromDecimals(this.productInfo.price, this.productInfo.token.decimals);
+            const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
             const startTime = this.edtStartDate.value.unix();
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
             const durationInSec = days * 86400;
             let discountAmount;
-            for (let rule of this.discountRules) {
+            for (let rule of this._data.discountRules) {
                 if (rule.discountApplication === 0 && this.isRenewal)
                     continue;
                 if (rule.discountApplication === 1 && !this.isRenewal)
                     continue;
-                if ((rule.startTime > 0 && startTime < rule.startTime) || (rule.endTime > 0 && startTime > rule.endTime) || rule.minDuration.gt(durationInSec))
+                if ((rule.startTime > 0 && startTime < rule.startTime) || (rule.endTime > 0 && startTime > rule.endTime) || rule.minDuration > durationInSec)
                     continue;
                 let basePrice = price;
                 if (rule.discountPercentage > 0) {
                     basePrice = price.times(1 - rule.discountPercentage / 100);
                 }
-                else if (rule.fixedPrice.gt(0)) {
-                    basePrice = rule.fixedPrice;
+                else if (rule.fixedPrice > 0) {
+                    basePrice = new eth_wallet_2.BigNumber(rule.fixedPrice);
                 }
-                let tmpDiscountAmount = price.minus(basePrice).div(this.productInfo.priceDuration.div(86400)).times(days);
+                let tmpDiscountAmount = price.minus(basePrice).div(this._data.durationInDays).times(days);
                 if (!this.discountApplied || tmpDiscountAmount.gt(discountAmount)) {
                     this.discountApplied = rule;
                     discountAmount = tmpDiscountAmount;
@@ -804,8 +308,8 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         _updateTotalAmount() {
             const duration = Number(this.edtDuration.value) || 0;
             if (!duration)
-                this.lblOrderTotal.caption = `0 ${this.productInfo.token?.symbol || ''}`;
-            const price = this.productInfo.price;
+                this.lblOrderTotal.caption = `0 ${this.token?.symbol || ''}`;
+            const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
             let basePrice = price;
             this.pnlDiscount.visible = false;
             if (this.discountApplied) {
@@ -814,23 +318,21 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                     this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}% off)`;
                     this.pnlDiscount.visible = true;
                 }
-                else if (this.discountApplied.fixedPrice.gt(0)) {
-                    basePrice = this.discountApplied.fixedPrice;
+                else if (this.discountApplied.fixedPrice > 0) {
+                    basePrice = new eth_wallet_2.BigNumber(this.discountApplied.fixedPrice);
                     this.lblDiscount.caption = "Discount";
                     this.pnlDiscount.visible = true;
                 }
             }
-            const pricePerDay = basePrice.div(this.productInfo.priceDuration.div(86400));
+            const pricePerDay = basePrice.div(this._data.durationInDays);
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-            const amountRaw = pricePerDay.times(days);
-            const amount = eth_wallet_2.Utils.fromDecimals(amountRaw, this.productInfo.token.decimals);
+            const amount = pricePerDay.times(days);
             this.tokenAmountIn = amount.toFixed();
             if (this.discountApplied) {
-                const discountAmountRaw = price.minus(basePrice).div(this.productInfo.priceDuration.div(86400)).times(days);
-                const discountAmount = eth_wallet_2.Utils.fromDecimals(discountAmountRaw, this.productInfo.token.decimals);
-                this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.productInfo.token?.symbol || ''}`;
+                const discountAmount = price.minus(basePrice).div(this._data.durationInDays).times(days);
+                this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
             }
-            this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(amount, 6)} ${this.productInfo.token?.symbol || ''}`;
+            this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(amount, 6)} ${this.token?.symbol || ''}`;
         }
         onStartDateChanged() {
             this._updateEndDate();
@@ -853,7 +355,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         determineBtnSubmitCaption() {
             if (!this.subscriptionModel.isClientWalletConnected()) {
                 this.btnSubmit.caption = 'Connect Wallet';
-                this.btnSubmit.enabled = true;
             }
             else {
                 this.btnSubmit.caption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
@@ -867,7 +368,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.doSubmitAction();
         }
         async doSubmitAction() {
-            if (!this._data || !this._data.productId)
+            if (!this._data)
                 return;
             if (!this.edtStartDate.value) {
                 this.showTxStatusModal('error', 'Start Date Required');
@@ -887,15 +388,14 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
             const duration = days * 86400;
             const confirmationCallback = async () => {
-                this.productInfo = await this.subscriptionModel.getProductInfo(this._data.productId);
                 if (this.onSubscribe)
                     this.onSubscribe();
             };
             if (this.isRenewal) {
-                await this.subscriptionModel.renewSubscription(this._data.productId, duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
+                await this.subscriptionModel.renewSubscription(duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
             }
             else {
-                await this.subscriptionModel.subscribe(this._data.productId, startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
+                await this.subscriptionModel.subscribe(startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
             }
         }
         async init() {
@@ -904,6 +404,13 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const durationUnits = this.subscriptionModel.durationUnits;
             this.comboDurationUnit.items = durationUnits;
             this.comboDurationUnit.selectedItem = durationUnits[0];
+            const data = {
+                wallets: this.subscriptionModel.wallets,
+                networks: [],
+                showHeader: false,
+            };
+            if (this.containerDapp?.setData)
+                await this.containerDapp.setData(data);
         }
         render() {
             return (this.$render("i-panel", null,
@@ -938,9 +445,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                                             this.$render("i-icon", { id: "iconOrderTotal", width: 20, height: 20, name: "question-circle", fill: Theme.background.modal, tooltip: { content: 'A commission fee of 0% will be applied to the amount you input.' } })),
                                         this.$render("i-label", { id: 'lblOrderTotal', font: { size: '1rem' }, caption: "0" })),
                                     this.$render("i-stack", { direction: "vertical", width: "100%", justifyContent: "center", alignItems: "center", margin: { top: '0.5rem' }, gap: 8 },
-                                        this.$render("i-button", { id: 'btnSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, onClick: this.onSubmit, enabled: false }))),
-                                this.$render("i-stack", { id: 'pnlUnsupportedNetwork', direction: "vertical", alignItems: "center", visible: false },
-                                    this.$render("i-label", { caption: 'This network or this token is not supported.', font: { size: '1.5rem' } })))),
+                                        this.$render("i-button", { id: 'btnSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, onClick: this.onSubmit }))))),
                         this.$render("i-scom-tx-status-modal", { id: "txStatusModal" })))));
         }
     };
