@@ -243,7 +243,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 this.pnlStartDate.visible = !this.isRenewal;
                 this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
                 this.lblStartDate.visible = this.isRenewal;
-                const rule = this._data.discountRuleId ? this._data.discountRules[this._data.discountRuleId] : null;
+                const rule = this._data.discountRuleId ? this._data.discountRules.find(rule => rule.id === this._data.discountRuleId) : null;
                 const isExpired = rule && rule.endTime && rule.endTime < (0, components_3.moment)().unix();
                 if (isExpired)
                     this._data.discountRuleId = undefined;
@@ -251,7 +251,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                     if (!this.isRenewal && rule.startTime && rule.startTime > this.edtStartDate.value.unix()) {
                         this.edtStartDate.value = (0, components_3.moment)(rule.startTime * 1000);
                     }
-                    this.edtDuration.value = new eth_wallet_2.BigNumber(rule.minDuration).div(86400).toNumber();
+                    this.edtDuration.value = rule.minDuration || "1";
                     this.comboDurationUnit.selectedItem = this.subscriptionModel.durationUnits[0];
                     this.discountApplied = rule;
                     this._updateEndDate();
@@ -282,14 +282,13 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
             const startTime = this.edtStartDate.value.unix();
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-            const durationInSec = days * 86400;
             let discountAmount;
             for (let rule of this._data.discountRules) {
                 if (rule.discountApplication === 0 && this.isRenewal)
                     continue;
                 if (rule.discountApplication === 1 && !this.isRenewal)
                     continue;
-                if ((rule.startTime > 0 && startTime < rule.startTime) || (rule.endTime > 0 && startTime > rule.endTime) || rule.minDuration > durationInSec)
+                if ((rule.startTime > 0 && startTime < rule.startTime) || (rule.endTime > 0 && startTime > rule.endTime) || rule.minDuration > days)
                     continue;
                 let basePrice = price;
                 if (rule.discountPercentage > 0) {
