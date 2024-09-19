@@ -24,7 +24,9 @@ import { SubscriptionModel } from './model';
 
 const Theme = Styles.Theme.ThemeVars;
 
-interface ScomTonSubscriptionElement extends ControlElement { }
+interface ScomTonSubscriptionElement extends ControlElement {
+    onMintedNFT?: () => void;
+}
 
 declare global {
     namespace JSX {
@@ -60,7 +62,7 @@ export default class ScomTonSubscription extends Module {
     private tokenAmountIn: string;
     private _data: ITonSubscription = {};
     private token: ITokenObject;
-    public onSubscribe: () => void;
+    public onMintedNFT: () => void;
 
     get isRenewal() {
         return this._isRenewal;
@@ -339,7 +341,7 @@ export default class ScomTonSubscription extends Module {
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
         const duration = days * 86400;
         const confirmationCallback = async () => {
-            if (this.onSubscribe) this.onSubscribe();
+            if (this.onMintedNFT) this.onMintedNFT();
         };
         if (this.isRenewal) {
             await this.subscriptionModel.renewSubscription(duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);

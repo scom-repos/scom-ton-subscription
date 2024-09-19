@@ -388,8 +388,8 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
             const duration = days * 86400;
             const confirmationCallback = async () => {
-                if (this.onSubscribe)
-                    this.onSubscribe();
+                if (this.onMintedNFT)
+                    this.onMintedNFT();
             };
             if (this.isRenewal) {
                 await this.subscriptionModel.renewSubscription(duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);

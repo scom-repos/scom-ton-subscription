@@ -76,6 +76,7 @@ declare module "@scom/scom-ton-subscription" {
     import { ControlElement, Module } from '@ijstech/components';
     import { ITonSubscription } from "@scom/scom-ton-subscription/interface.ts";
     interface ScomTonSubscriptionElement extends ControlElement {
+        onMintedNFT?: () => void;
     }
     global {
         namespace JSX {
@@ -108,7 +109,7 @@ declare module "@scom/scom-ton-subscription" {
         private tokenAmountIn;
         private _data;
         private token;
-        onSubscribe: () => void;
+        onMintedNFT: () => void;
         get isRenewal(): boolean;
         set isRenewal(value: boolean);
         get renewalDate(): number;
