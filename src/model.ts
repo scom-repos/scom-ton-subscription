@@ -2,6 +2,7 @@ import { application, FormatUtils, moment } from "@ijstech/components";
 import { BigNumber, Wallet, ISendTxEventsOptions } from "@ijstech/eth-wallet";
 import { IWalletPlugin } from "./interface";
 import { ITokenObject } from '@scom/scom-token-list';
+import { SocialDataManager } from "@scom/scom-social-sdk";
 
 export class SubscriptionModel {
     get wallets(): IWalletPlugin[] {
@@ -92,20 +93,25 @@ export class SubscriptionModel {
     }
 
     async subscribe(
+        dataManager: SocialDataManager,
+        creatorId: string,
+        communityId: string,
         startTime: number,
-        duration: number,
-        referrer: string,
-        discountRuleId: number = 0,
+        endTime: number,
         callback?: any,
         confirmationCallback?: any
     ) {
-    }
-
-    async renewSubscription(
-        duration: number,
-        discountRuleId: number = 0,
-        callback?: any,
-        confirmationCallback?: any
-    ) {
+        try {
+            await dataManager.updateCommunitySubscription({
+                communityCreatorId: creatorId,
+                communityId: communityId,
+                start: startTime,
+                end: endTime,
+                txHash: "3jXIY9Whgb2nl/rKiFXLQqqL76jlB3bVHGOR4V7wiD8="
+            });
+            if (confirmationCallback) confirmationCallback();
+        } catch (err) {
+            callback(err);
+        }
     }
 }

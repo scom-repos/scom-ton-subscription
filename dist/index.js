@@ -105,9 +105,21 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             }
             return token;
         }
-        async subscribe(startTime, duration, referrer, discountRuleId = 0, callback, confirmationCallback) {
-        }
-        async renewSubscription(duration, discountRuleId = 0, callback, confirmationCallback) {
+        async subscribe(dataManager, creatorId, communityId, startTime, endTime, callback, confirmationCallback) {
+            try {
+                await dataManager.updateCommunitySubscription({
+                    communityCreatorId: creatorId,
+                    communityId: communityId,
+                    start: startTime,
+                    end: endTime,
+                    txHash: "3jXIY9Whgb2nl/rKiFXLQqqL76jlB3bVHGOR4V7wiD8="
+                });
+                if (confirmationCallback)
+                    confirmationCallback();
+            }
+            catch (err) {
+                callback(err);
+            }
         }
     }
     exports.SubscriptionModel = SubscriptionModel;
@@ -137,6 +149,12 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 this.txStatusModal.message = { ...params };
                 this.txStatusModal.showModal();
             };
+        }
+        get dataManager() {
+            return this._dataManager || components_3.application.store?.mainDataManager;
+        }
+        set dataManager(manager) {
+            this._dataManager = manager;
         }
         get isRenewal() {
             return this._isRenewal;
@@ -384,18 +402,12 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 }
             };
             const startTime = this.edtStartDate.value.unix();
-            const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-            const duration = days * 86400;
+            const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
             const confirmationCallback = async () => {
                 if (this.onMintedNFT)
                     this.onMintedNFT();
             };
-            if (this.isRenewal) {
-                await this.subscriptionModel.renewSubscription(duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
-            }
-            else {
-                await this.subscriptionModel.subscribe(startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
-            }
+            await this.subscriptionModel.subscribe(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, callback, confirmationCallback);
         }
         async init() {
             super.init();

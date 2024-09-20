@@ -26,6 +26,8 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         discountApplication: number;
     }
     export interface ITonSubscription {
+        creatorId?: string;
+        communityId?: string;
         name?: string;
         paymentModel?: PaymentModel;
         chainId?: number;
@@ -54,6 +56,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     import { BigNumber } from "@ijstech/eth-wallet";
     import { IWalletPlugin } from "@scom/scom-ton-subscription/interface.ts";
     import { ITokenObject } from '@scom/scom-token-list';
+    import { SocialDataManager } from "@scom/scom-social-sdk";
     export class SubscriptionModel {
         get wallets(): IWalletPlugin[];
         get tokens(): ITokenObject[];
@@ -67,13 +70,13 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
-        subscribe(startTime: number, duration: number, referrer: string, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
-        renewSubscription(duration: number, discountRuleId?: number, callback?: any, confirmationCallback?: any): Promise<void>;
+        subscribe(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, callback?: any, confirmationCallback?: any): Promise<void>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
 declare module "@scom/scom-ton-subscription" {
     import { ControlElement, Module } from '@ijstech/components';
+    import { SocialDataManager } from '@scom/scom-social-sdk';
     import { ITonSubscription } from "@scom/scom-ton-subscription/interface.ts";
     interface ScomTonSubscriptionElement extends ControlElement {
         onMintedNFT?: () => void;
@@ -109,7 +112,10 @@ declare module "@scom/scom-ton-subscription" {
         private tokenAmountIn;
         private _data;
         private token;
+        private _dataManager;
         onMintedNFT: () => void;
+        get dataManager(): SocialDataManager;
+        set dataManager(manager: SocialDataManager);
         get isRenewal(): boolean;
         set isRenewal(value: boolean);
         get renewalDate(): number;

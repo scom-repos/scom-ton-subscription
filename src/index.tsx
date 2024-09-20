@@ -1,4 +1,5 @@
 import {
+    application,
     Button,
     ComboBox,
     ControlElement,
@@ -16,6 +17,7 @@ import {
 } from '@ijstech/components';
 import { BigNumber, Utils } from '@ijstech/eth-wallet';
 import ScomDappContainer from '@scom/scom-dapp-container';
+import { SocialDataManager } from '@scom/scom-social-sdk';
 import { ITokenObject } from '@scom/scom-token-list';
 import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
@@ -62,7 +64,16 @@ export default class ScomTonSubscription extends Module {
     private tokenAmountIn: string;
     private _data: ITonSubscription = {};
     private token: ITokenObject;
+    private _dataManager: SocialDataManager;
     public onMintedNFT: () => void;
+    
+    get dataManager() {
+        return this._dataManager || application.store?.mainDataManager;
+    }
+
+    set dataManager(manager: SocialDataManager) {
+        this._dataManager = manager;
+    }
 
     get isRenewal() {
         return this._isRenewal;
@@ -337,16 +348,11 @@ export default class ScomTonSubscription extends Module {
             }
         };
         const startTime = this.edtStartDate.value.unix();
-        const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-        const duration = days * 86400;
+        const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
         const confirmationCallback = async () => {
             if (this.onMintedNFT) this.onMintedNFT();
         };
-        if (this.isRenewal) {
-            await this.subscriptionModel.renewSubscription(duration, this.discountApplied?.id ?? 0, callback, confirmationCallback);
-        } else {
-            await this.subscriptionModel.subscribe(startTime, duration, this._data.referrer, this.discountApplied?.id ?? 0, callback, confirmationCallback);
-        }
+        await this.subscriptionModel.subscribe(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, callback, confirmationCallback);
     }
 
     async init() {

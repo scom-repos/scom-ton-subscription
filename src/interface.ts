@@ -25,6 +25,8 @@ export interface ISubscriptionDiscountRule {
 }
 
 export interface ITonSubscription {
+    creatorId?: string;
+    communityId?: string;
     name?: string;
     paymentModel?: PaymentModel;
     chainId?: number;

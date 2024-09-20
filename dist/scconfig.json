@@ -8,6 +8,9 @@
         "@scom/scom-network-list",
         "@scom/scom-multicall",
         "@scom/scom-dapp-container",
+        "@scom/scom-signer",
+        "@scom/scom-mqtt",
+        "@scom/scom-social-sdk",
         "@scom/scom-token-list",
         "@scom/scom-tx-status-modal"
     ]
