@@ -104,7 +104,9 @@ declare module "@scom/scom-ton-subscription" {
         private lblDiscountAmount;
         private lblOrderTotal;
         private iconOrderTotal;
-        private btnSubmit;
+        private isWalletConnected;
+        private btnTonSubmit;
+        private tonConnectUI;
         private subscriptionModel;
         private discountApplied;
         private _isRenewal;
@@ -147,6 +149,7 @@ declare module "@scom/scom-ton-subscription" {
         private onDurationChanged;
         private onDurationUnitChanged;
         private updateSubmitButton;
+        private connectTonWallet;
         private determineBtnSubmitCaption;
         private showTxStatusModal;
         private onSubmit;

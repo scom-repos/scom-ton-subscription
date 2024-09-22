@@ -55,7 +55,9 @@ export default class ScomTonSubscription extends Module {
     private lblDiscountAmount: Label;
     private lblOrderTotal: Label;
     private iconOrderTotal: Icon;
-    private btnSubmit: Button;
+    private isWalletConnected: boolean;
+    private btnTonSubmit: Button;
+    private tonConnectUI: any;
 
     private subscriptionModel: SubscriptionModel;
     private discountApplied: ISubscriptionDiscountRule;
@@ -295,16 +297,33 @@ export default class ScomTonSubscription extends Module {
     }
 
     private updateSubmitButton(submitting: boolean) {
-        this.btnSubmit.rightIcon.spin = submitting;
-        this.btnSubmit.rightIcon.visible = submitting;
+        this.btnTonSubmit.rightIcon.spin = submitting;
+        this.btnTonSubmit.rightIcon.visible = submitting;
     }
-
+    private async connectTonWallet(){
+        try{
+            let UI = window['TON_CONNECT_UI'];
+            this.tonConnectUI = new UI.TonConnectUI({
+                manifestUrl: 'https://ton.noto.fan/tonconnect/manifest.json',
+                buttonRootId: 'btnTonSubmit'
+            });
+            this.tonConnectUI.connectionRestored.then(async (restored: boolean) => {
+                if (!restored)
+                    await this.tonConnectUI.openModal()
+                this.isWalletConnected = this.tonConnectUI.connected;
+                this.determineBtnSubmitCaption();
+            });
+        }
+        catch(err){
+            alert(err)
+        }        
+    }
     private determineBtnSubmitCaption() {
-        if (!this.subscriptionModel.isClientWalletConnected()) {
-            this.btnSubmit.caption = 'Connect Wallet';
+        if (!this.isWalletConnected) {
+            this.btnTonSubmit.caption = 'Connect Wallet';
         }
         else {
-            this.btnSubmit.caption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
+            this.btnTonSubmit.caption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
         }
     }
 
@@ -324,14 +343,39 @@ export default class ScomTonSubscription extends Module {
     }
 
     private async onSubmit() {
-        if (!this.subscriptionModel.isClientWalletConnected()) {
-            this.subscriptionModel.connectWallet();
+        if (!this.isWalletConnected) {
+            this.connectTonWallet();
             return;
         }
         this.doSubmitAction();
     }
-
     private async doSubmitAction() {
+        let subscriptionFee = 0.0001;
+        let subscriptionFeeToAddress = "UQBxUUDWgcdEh7SZnMpMkhVJMc1rS-KhzwHoZXsAcJC045ym";
+        
+        //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
+            messages: [
+                {
+                    address: subscriptionFeeToAddress,
+                    amount: subscriptionFee * 1e9,
+                 // payload: "base64bocblahblahblah==" // just for instance. Replace with your transaction payload or remove
+                }
+            ]
+        };
+        
+        try {
+            const result = await this.tonConnectUI.sendTransaction(transaction);
+            alert(JSON.stringify(result));
+            // you can use signed boc to find the transaction 
+            // const someTxData = await myAppExplorerService.getTransaction(result.boc);
+            // alert('Transaction was sent successfully', someTxData);
+        } catch (e) {
+            console.error(e);
+        }
+        return;
+
         if (!this._data) return;
         if (!this.edtStartDate.value) {
             this.showTxStatusModal('error', 'Start Date Required');
@@ -474,7 +518,7 @@ export default class ScomTonSubscription extends Module {
                                     </i-stack>
                                     <i-stack direction="vertical" width="100%" justifyContent="center" alignItems="center" margin={{ top: '0.5rem' }} gap={8}>
                                         <i-button
-                                            id='btnSubmit'
+                                            id='btnTonSubmit'
                                             width='100%'
                                             caption='Subscribe'
                                             padding={{ top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }}

@@ -366,25 +366,67 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this._updateTotalAmount();
         }
         updateSubmitButton(submitting) {
-            this.btnSubmit.rightIcon.spin = submitting;
-            this.btnSubmit.rightIcon.visible = submitting;
+            this.btnTonSubmit.rightIcon.spin = submitting;
+            this.btnTonSubmit.rightIcon.visible = submitting;
+        }
+        async connectTonWallet() {
+            try {
+                let UI = window['TON_CONNECT_UI'];
+                this.tonConnectUI = new UI.TonConnectUI({
+                    manifestUrl: 'https://ton.noto.fan/tonconnect/manifest.json',
+                    buttonRootId: 'btnTonSubmit'
+                });
+                this.tonConnectUI.connectionRestored.then(async (restored) => {
+                    if (!restored)
+                        await this.tonConnectUI.openModal();
+                    this.isWalletConnected = this.tonConnectUI.connected;
+                    this.determineBtnSubmitCaption();
+                });
+            }
+            catch (err) {
+                alert(err);
+            }
         }
         determineBtnSubmitCaption() {
-            if (!this.subscriptionModel.isClientWalletConnected()) {
-                this.btnSubmit.caption = 'Connect Wallet';
+            if (!this.isWalletConnected) {
+                this.btnTonSubmit.caption = 'Connect Wallet';
             }
             else {
-                this.btnSubmit.caption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
+                this.btnTonSubmit.caption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
             }
         }
         async onSubmit() {
-            if (!this.subscriptionModel.isClientWalletConnected()) {
-                this.subscriptionModel.connectWallet();
+            if (!this.isWalletConnected) {
+                this.connectTonWallet();
                 return;
             }
             this.doSubmitAction();
         }
         async doSubmitAction() {
+            let subscriptionFee = 0.0001;
+            let subscriptionFeeToAddress = "UQBxUUDWgcdEh7SZnMpMkhVJMc1rS-KhzwHoZXsAcJC045ym";
+            //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 60,
+                messages: [
+                    {
+                        address: subscriptionFeeToAddress,
+                        amount: subscriptionFee * 1e9,
+                        // payload: "base64bocblahblahblah==" // just for instance. Replace with your transaction payload or remove
+                    }
+                ]
+            };
+            try {
+                const result = await this.tonConnectUI.sendTransaction(transaction);
+                alert(JSON.stringify(result));
+                // you can use signed boc to find the transaction 
+                // const someTxData = await myAppExplorerService.getTransaction(result.boc);
+                // alert('Transaction was sent successfully', someTxData);
+            }
+            catch (e) {
+                console.error(e);
+            }
+            return;
             if (!this._data)
                 return;
             if (!this.edtStartDate.value) {
@@ -456,7 +498,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                                             this.$render("i-icon", { id: "iconOrderTotal", width: 20, height: 20, name: "question-circle", fill: Theme.background.modal, tooltip: { content: 'A commission fee of 0% will be applied to the amount you input.' } })),
                                         this.$render("i-label", { id: 'lblOrderTotal', font: { size: '1rem' }, caption: "0" })),
                                     this.$render("i-stack", { direction: "vertical", width: "100%", justifyContent: "center", alignItems: "center", margin: { top: '0.5rem' }, gap: 8 },
-                                        this.$render("i-button", { id: 'btnSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, onClick: this.onSubmit }))))),
+                                        this.$render("i-button", { id: 'btnTonSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, onClick: this.onSubmit }))))),
                         this.$render("i-scom-tx-status-modal", { id: "txStatusModal" })))));
         }
     };
