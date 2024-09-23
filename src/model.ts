@@ -92,26 +92,20 @@ export class SubscriptionModel {
         return token;
     }
 
-    async subscribe(
+    async updateCommunitySubscription(
         dataManager: SocialDataManager,
         creatorId: string,
         communityId: string,
         startTime: number,
         endTime: number,
-        callback?: any,
-        confirmationCallback?: any
+        txHash: string
     ) {
-        try {
-            await dataManager.updateCommunitySubscription({
-                communityCreatorId: creatorId,
-                communityId: communityId,
-                start: startTime,
-                end: endTime,
-                txHash: "3jXIY9Whgb2nl/rKiFXLQqqL76jlB3bVHGOR4V7wiD8="
-            });
-            if (confirmationCallback) confirmationCallback();
-        } catch (err) {
-            callback(err);
-        }
+        await dataManager.updateCommunitySubscription({
+            communityCreatorId: creatorId,
+            communityId: communityId,
+            start: startTime,
+            end: endTime,
+            txHash: txHash
+        });
     }
 }

@@ -105,21 +105,14 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             }
             return token;
         }
-        async subscribe(dataManager, creatorId, communityId, startTime, endTime, callback, confirmationCallback) {
-            try {
-                await dataManager.updateCommunitySubscription({
-                    communityCreatorId: creatorId,
-                    communityId: communityId,
-                    start: startTime,
-                    end: endTime,
-                    txHash: "3jXIY9Whgb2nl/rKiFXLQqqL76jlB3bVHGOR4V7wiD8="
-                });
-                if (confirmationCallback)
-                    confirmationCallback();
-            }
-            catch (err) {
-                callback(err);
-            }
+        async updateCommunitySubscription(dataManager, creatorId, communityId, startTime, endTime, txHash) {
+            await dataManager.updateCommunitySubscription({
+                communityCreatorId: creatorId,
+                communityId: communityId,
+                start: startTime,
+                end: endTime,
+                txHash: txHash
+            });
         }
     }
     exports.SubscriptionModel = SubscriptionModel;
@@ -177,6 +170,25 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         get durationUnit() {
             return (this.comboDurationUnit.selectedItem?.value || 'days');
+        }
+        get basePrice() {
+            const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
+            let basePrice = price;
+            if (this.discountApplied) {
+                if (this.discountApplied.discountPercentage > 0) {
+                    basePrice = price.times(1 - this.discountApplied.discountPercentage / 100);
+                }
+                else if (this.discountApplied.fixedPrice > 0) {
+                    basePrice = new eth_wallet_2.BigNumber(this.discountApplied.fixedPrice);
+                }
+            }
+            return basePrice;
+        }
+        get totalAmount() {
+            let basePrice = this.basePrice;
+            const pricePerDay = basePrice.div(this._data.durationInDays);
+            const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
+            return pricePerDay.times(days);
         }
         showLoading() {
             this.pnlLoading.visible = true;
@@ -326,30 +338,24 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const duration = Number(this.edtDuration.value) || 0;
             if (!duration)
                 this.lblOrderTotal.caption = `0 ${this.token?.symbol || ''}`;
-            const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
-            let basePrice = price;
             this.pnlDiscount.visible = false;
             if (this.discountApplied) {
                 if (this.discountApplied.discountPercentage > 0) {
-                    basePrice = price.times(1 - this.discountApplied.discountPercentage / 100);
                     this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}% off)`;
                     this.pnlDiscount.visible = true;
                 }
                 else if (this.discountApplied.fixedPrice > 0) {
-                    basePrice = new eth_wallet_2.BigNumber(this.discountApplied.fixedPrice);
                     this.lblDiscount.caption = "Discount";
                     this.pnlDiscount.visible = true;
                 }
+                if (this.pnlDiscount.visible) {
+                    const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
+                    const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
+                    const discountAmount = price.minus(this.basePrice).div(this._data.durationInDays).times(days);
+                    this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
+                }
             }
-            const pricePerDay = basePrice.div(this._data.durationInDays);
-            const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-            const amount = pricePerDay.times(days);
-            this.tokenAmountIn = amount.toFixed();
-            if (this.discountApplied) {
-                const discountAmount = price.minus(basePrice).div(this._data.durationInDays).times(days);
-                this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
-            }
-            this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(amount, 6)} ${this.token?.symbol || ''}`;
+            this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${this.token?.symbol || ''}`;
         }
         onStartDateChanged() {
             this._updateEndDate();
@@ -403,30 +409,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.doSubmitAction();
         }
         async doSubmitAction() {
-            let subscriptionFee = 0.0001;
-            let subscriptionFeeToAddress = "UQBxUUDWgcdEh7SZnMpMkhVJMc1rS-KhzwHoZXsAcJC045ym";
-            //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
-            const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 60,
-                messages: [
-                    {
-                        address: subscriptionFeeToAddress,
-                        amount: subscriptionFee * 1e9,
-                        // payload: "base64bocblahblahblah==" // just for instance. Replace with your transaction payload or remove
-                    }
-                ]
-            };
-            try {
-                const result = await this.tonConnectUI.sendTransaction(transaction);
-                alert(JSON.stringify(result));
-                // you can use signed boc to find the transaction 
-                // const someTxData = await myAppExplorerService.getTransaction(result.boc);
-                // alert('Transaction was sent successfully', someTxData);
-            }
-            catch (e) {
-                console.error(e);
-            }
-            return;
             if (!this._data)
                 return;
             if (!this.edtStartDate.value) {
@@ -438,18 +420,35 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 return;
             }
             this.updateSubmitButton(true);
-            const callback = (error, receipt) => {
-                if (error) {
-                    this.showTxStatusModal('error', error);
-                }
-            };
             const startTime = this.edtStartDate.value.unix();
             const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
-            const confirmationCallback = async () => {
+            let subscriptionFee = this.totalAmount;
+            let subscriptionFeeToAddress = this._data.recipient;
+            //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 60,
+                messages: [
+                    {
+                        address: subscriptionFeeToAddress,
+                        amount: subscriptionFee.times(1e9).toFixed(),
+                        // payload: "base64bocblahblahblah==" // just for instance. Replace with your transaction payload or remove
+                    }
+                ]
+            };
+            try {
+                const result = await this.tonConnectUI.sendTransaction(transaction);
+                alert(JSON.stringify(result));
+                // you can use signed boc to find the transaction 
+                // const someTxData = await myAppExplorerService.getTransaction(result.boc);
+                // alert('Transaction was sent successfully', someTxData);
+                // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, "");
                 if (this.onMintedNFT)
                     this.onMintedNFT();
-            };
-            await this.subscriptionModel.subscribe(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, callback, confirmationCallback);
+            }
+            catch (e) {
+                console.error(e);
+            }
+            this.updateSubmitButton(false);
         }
         async init() {
             super.init();

@@ -70,7 +70,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
-        subscribe(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, callback?: any, confirmationCallback?: any): Promise<void>;
+        updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
@@ -111,7 +111,6 @@ declare module "@scom/scom-ton-subscription" {
         private discountApplied;
         private _isRenewal;
         private _renewalDate;
-        private tokenAmountIn;
         private _data;
         private token;
         private _dataManager;
@@ -124,6 +123,8 @@ declare module "@scom/scom-ton-subscription" {
         set renewalDate(value: number);
         private get duration();
         private get durationUnit();
+        private get basePrice();
+        private get totalAmount();
         showLoading(): void;
         hideLoading(): void;
         getConfigurators(): {

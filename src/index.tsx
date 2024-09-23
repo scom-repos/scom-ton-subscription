@@ -63,7 +63,6 @@ export default class ScomTonSubscription extends Module {
     private discountApplied: ISubscriptionDiscountRule;
     private _isRenewal = false;
     private _renewalDate: number;
-    private tokenAmountIn: string;
     private _data: ITonSubscription = {};
     private token: ITokenObject;
     private _dataManager: SocialDataManager;
@@ -101,6 +100,26 @@ export default class ScomTonSubscription extends Module {
 
     private get durationUnit() {
         return ((this.comboDurationUnit.selectedItem as IComboItem)?.value || 'days') as 'days' | 'months' | 'years';
+    }
+    
+    private get basePrice() {
+        const price = new BigNumber(this._data.tokenAmount);
+        let basePrice: BigNumber = price;
+        if (this.discountApplied) {
+            if (this.discountApplied.discountPercentage > 0) {
+                basePrice = price.times(1 - this.discountApplied.discountPercentage / 100);
+            } else if (this.discountApplied.fixedPrice> 0) {
+                basePrice = new BigNumber(this.discountApplied.fixedPrice);
+            }
+        }
+        return basePrice;
+    }
+
+    private get totalAmount() {
+        let basePrice = this.basePrice;
+        const pricePerDay = basePrice.div(this._data.durationInDays);
+        const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
+        return pricePerDay.times(days);
     }
 
     showLoading() {
@@ -254,29 +273,23 @@ export default class ScomTonSubscription extends Module {
     private _updateTotalAmount() {
         const duration = Number(this.edtDuration.value) || 0;
         if (!duration) this.lblOrderTotal.caption = `0 ${this.token?.symbol || ''}`;
-        const price = new BigNumber(this._data.tokenAmount);
-        let basePrice: BigNumber = price;
         this.pnlDiscount.visible = false;
         if (this.discountApplied) {
             if (this.discountApplied.discountPercentage > 0) {
-                basePrice = price.times(1 - this.discountApplied.discountPercentage / 100);
                 this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}% off)`;
                 this.pnlDiscount.visible = true;
             } else if (this.discountApplied.fixedPrice> 0) {
-                basePrice = new BigNumber(this.discountApplied.fixedPrice);
                 this.lblDiscount.caption = "Discount";
                 this.pnlDiscount.visible = true;
             }
+            if (this.pnlDiscount.visible) {
+                const price = new BigNumber(this._data.tokenAmount);
+                const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
+                const discountAmount = price.minus(this.basePrice).div(this._data.durationInDays).times(days);
+                this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
+            }
         }
-        const pricePerDay = basePrice.div(this._data.durationInDays);
-        const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
-        const amount = pricePerDay.times(days);
-        this.tokenAmountIn = amount.toFixed();
-        if (this.discountApplied) {
-            const discountAmount = price.minus(basePrice).div(this._data.durationInDays).times(days);
-            this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
-        }
-        this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(amount, 6)} ${this.token?.symbol || ''}`;
+        this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${this.token?.symbol || ''}`;
     }
 
     private onStartDateChanged() {
@@ -350,8 +363,20 @@ export default class ScomTonSubscription extends Module {
         this.doSubmitAction();
     }
     private async doSubmitAction() {
-        let subscriptionFee = 0.0001;
-        let subscriptionFeeToAddress = "UQBxUUDWgcdEh7SZnMpMkhVJMc1rS-KhzwHoZXsAcJC045ym";
+        if (!this._data) return;
+        if (!this.edtStartDate.value) {
+            this.showTxStatusModal('error', 'Start Date Required');
+            return;
+        }
+        if (!this.edtDuration.value || this.duration <= 0 || !Number.isInteger(this.duration)) {
+            this.showTxStatusModal('error', !this.edtDuration.value ? 'Duration Required' : 'Invalid Duration');
+            return;
+        }
+        this.updateSubmitButton(true);
+        const startTime = this.edtStartDate.value.unix();
+        const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
+        let subscriptionFee = this.totalAmount;
+        let subscriptionFeeToAddress = this._data.recipient;
         
         //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
         const transaction = {
@@ -359,7 +384,7 @@ export default class ScomTonSubscription extends Module {
             messages: [
                 {
                     address: subscriptionFeeToAddress,
-                    amount: subscriptionFee * 1e9,
+                    amount: subscriptionFee.times(1e9).toFixed(),
                  // payload: "base64bocblahblahblah==" // just for instance. Replace with your transaction payload or remove
                 }
             ]
@@ -371,32 +396,13 @@ export default class ScomTonSubscription extends Module {
             // you can use signed boc to find the transaction 
             // const someTxData = await myAppExplorerService.getTransaction(result.boc);
             // alert('Transaction was sent successfully', someTxData);
+            
+            // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, "");
+            if (this.onMintedNFT) this.onMintedNFT();
         } catch (e) {
             console.error(e);
         }
-        return;
-
-        if (!this._data) return;
-        if (!this.edtStartDate.value) {
-            this.showTxStatusModal('error', 'Start Date Required');
-            return;
-        }
-        if (!this.edtDuration.value || this.duration <= 0 || !Number.isInteger(this.duration)) {
-            this.showTxStatusModal('error', !this.edtDuration.value ? 'Duration Required' : 'Invalid Duration');
-            return;
-        }
-        this.updateSubmitButton(true);
-        const callback = (error: Error, receipt?: string) => {
-            if (error) {
-                this.showTxStatusModal('error', error);
-            }
-        };
-        const startTime = this.edtStartDate.value.unix();
-        const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
-        const confirmationCallback = async () => {
-            if (this.onMintedNFT) this.onMintedNFT();
-        };
-        await this.subscriptionModel.subscribe(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, callback, confirmationCallback);
+        this.updateSubmitButton(false);
     }
 
     async init() {
