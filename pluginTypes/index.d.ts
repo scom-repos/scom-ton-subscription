@@ -58,6 +58,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     import { ITokenObject } from '@scom/scom-token-list';
     import { SocialDataManager } from "@scom/scom-social-sdk";
     export class SubscriptionModel {
+        private tonweb;
         get wallets(): IWalletPlugin[];
         get tokens(): ITokenObject[];
         get durationUnits(): {
@@ -69,6 +70,8 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         initWallet(): Promise<void>;
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
+        loadLib(moduleDir: string): Promise<unknown>;
+        getTransactionHash(boc: string): Promise<any>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
     }

@@ -25,6 +25,7 @@ import { ISubscriptionDiscountRule, ITonSubscription } from './interface';
 import { SubscriptionModel } from './model';
 
 const Theme = Styles.Theme.ThemeVars;
+const path = application.currentModuleDir;
 
 interface ScomTonSubscriptionElement extends ControlElement {
     onMintedNFT?: () => void;
@@ -407,8 +408,8 @@ export default class ScomTonSubscription extends Module {
             // you can use signed boc to find the transaction 
             // const someTxData = await myAppExplorerService.getTransaction(result.boc);
             // alert('Transaction was sent successfully', someTxData);
-            // const txHash = this.subscriptionModel.toHash(result.boc);
-            // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
+            const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
+            await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
             if (this.onMintedNFT) this.onMintedNFT();
         } catch (e) {
             console.error(e);
@@ -418,6 +419,7 @@ export default class ScomTonSubscription extends Module {
 
     async init() {
         super.init();
+        const moduleDir = this['currentModuleDir'] || path;
         this.subscriptionModel = new SubscriptionModel();
         const durationUnits = this.subscriptionModel.durationUnits;
         this.comboDurationUnit.items = durationUnits;
@@ -429,6 +431,7 @@ export default class ScomTonSubscription extends Module {
         }
         this.initTonWallet();
         if (this.containerDapp?.setData) await this.containerDapp.setData(data);
+        await this.subscriptionModel.loadLib(moduleDir);
     }
 
     render() {

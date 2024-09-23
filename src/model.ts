@@ -1,10 +1,12 @@
-import { application, FormatUtils, moment } from "@ijstech/components";
+import { application, FormatUtils, moment, RequireJS } from "@ijstech/components";
 import { BigNumber, Wallet, ISendTxEventsOptions } from "@ijstech/eth-wallet";
 import { IWalletPlugin } from "./interface";
 import { ITokenObject } from '@scom/scom-token-list';
 import { SocialDataManager } from "@scom/scom-social-sdk";
 
 export class SubscriptionModel {
+    private tonweb;
+
     get wallets(): IWalletPlugin[] {
         return [
             {
@@ -69,6 +71,28 @@ export class SubscriptionModel {
 
     isClientWalletConnected() {
         return true;
+    }
+    
+    async loadLib(moduleDir: string) {
+        let self = this;
+        return new Promise((resolve, reject) => {
+            RequireJS.config({
+                baseUrl: `${moduleDir}/lib`,
+                paths: {
+                    'tonweb': 'tonweb'
+                }
+            })
+            RequireJS.require(['tonweb'], function (tonweb: any) {
+                self.tonweb = new tonweb();
+                resolve(self.tonweb);
+            });
+        })
+    }
+
+    async getTransactionHash(boc: string) {
+        const bocCellBytes = await this.tonweb.boc.Cell.oneFromBoc(this.tonweb.utils.base64ToBytes(boc)).hash();
+        const hashBase64 = this.tonweb.utils.bytesToBase64(bocCellBytes);
+        return hashBase64;
     }
 
     async getTokenInfo(address: string, chainId: number) {

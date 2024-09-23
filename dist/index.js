@@ -85,6 +85,26 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         isClientWalletConnected() {
             return true;
         }
+        async loadLib(moduleDir) {
+            let self = this;
+            return new Promise((resolve, reject) => {
+                components_2.RequireJS.config({
+                    baseUrl: `${moduleDir}/lib`,
+                    paths: {
+                        'tonweb': 'tonweb'
+                    }
+                });
+                components_2.RequireJS.require(['tonweb'], function (tonweb) {
+                    self.tonweb = new tonweb();
+                    resolve(self.tonweb);
+                });
+            });
+        }
+        async getTransactionHash(boc) {
+            const bocCellBytes = await this.tonweb.boc.Cell.oneFromBoc(this.tonweb.utils.base64ToBytes(boc)).hash();
+            const hashBase64 = this.tonweb.utils.bytesToBase64(bocCellBytes);
+            return hashBase64;
+        }
         async getTokenInfo(address, chainId) {
             let token;
             const wallet = eth_wallet_1.Wallet.getClientInstance();
@@ -121,6 +141,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const Theme = components_3.Styles.Theme.ThemeVars;
+    const path = components_3.application.currentModuleDir;
     let ScomTonSubscription = class ScomTonSubscription extends components_3.Module {
         constructor() {
             super(...arguments);
@@ -452,8 +473,8 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 // you can use signed boc to find the transaction 
                 // const someTxData = await myAppExplorerService.getTransaction(result.boc);
                 // alert('Transaction was sent successfully', someTxData);
-                // const txHash = this.subscriptionModel.toHash(result.boc);
-                // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
+                const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
+                await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
                 if (this.onMintedNFT)
                     this.onMintedNFT();
             }
@@ -464,6 +485,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         async init() {
             super.init();
+            const moduleDir = this['currentModuleDir'] || path;
             this.subscriptionModel = new model_1.SubscriptionModel();
             const durationUnits = this.subscriptionModel.durationUnits;
             this.comboDurationUnit.items = durationUnits;
@@ -476,6 +498,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.initTonWallet();
             if (this.containerDapp?.setData)
                 await this.containerDapp.setData(data);
+            await this.subscriptionModel.loadLib(moduleDir);
         }
         render() {
             return (this.$render("i-panel", null,
