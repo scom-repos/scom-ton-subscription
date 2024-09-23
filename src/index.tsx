@@ -41,6 +41,7 @@ declare global {
 @customElements('i-scom-ton-subscription')
 export default class ScomTonSubscription extends Module {
     private containerDapp: ScomDappContainer;
+    private pnlHeader: StackLayout;
     private pnlLoading: StackLayout;
     private pnlBody: StackLayout;
     private pnlStartDate: Panel;
@@ -313,19 +314,29 @@ export default class ScomTonSubscription extends Module {
         this.btnTonSubmit.rightIcon.spin = submitting;
         this.btnTonSubmit.rightIcon.visible = submitting;
     }
-    private async connectTonWallet(){
-        try{
+    private initTonWallet() {
+        try {
             let UI = window['TON_CONNECT_UI'];
             this.tonConnectUI = new UI.TonConnectUI({
                 manifestUrl: 'https://ton.noto.fan/tonconnect/manifest.json',
-                buttonRootId: 'btnTonSubmit'
+                buttonRootId: 'pnlHeader'
             });
             this.tonConnectUI.connectionRestored.then(async (restored: boolean) => {
-                if (!restored)
-                    await this.tonConnectUI.openModal()
                 this.isWalletConnected = this.tonConnectUI.connected;
+                this.btnTonSubmit.enabled = true;
                 this.determineBtnSubmitCaption();
             });
+            this.tonConnectUI.onStatusChange((walletAndwalletInfo) => {
+                this.isWalletConnected = !!walletAndwalletInfo;
+                this.determineBtnSubmitCaption();
+            });
+        } catch (err) {
+            alert(err)
+        }
+    }
+    private async connectTonWallet(){
+        try{
+            await this.tonConnectUI.openModal();
         }
         catch(err){
             alert(err)
@@ -396,8 +407,8 @@ export default class ScomTonSubscription extends Module {
             // you can use signed boc to find the transaction 
             // const someTxData = await myAppExplorerService.getTransaction(result.boc);
             // alert('Transaction was sent successfully', someTxData);
-            
-            // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, "");
+            // const txHash = this.subscriptionModel.toHash(result.boc);
+            // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
             if (this.onMintedNFT) this.onMintedNFT();
         } catch (e) {
             console.error(e);
@@ -416,6 +427,7 @@ export default class ScomTonSubscription extends Module {
             networks: [],
             showHeader: false,
         }
+        this.initTonWallet();
         if (this.containerDapp?.setData) await this.containerDapp.setData(data);
     }
 
@@ -423,6 +435,13 @@ export default class ScomTonSubscription extends Module {
         return (
             <i-panel>
                 <i-scom-dapp-container id="containerDapp">
+                    <i-panel
+                        padding={{ top: '0.5rem', bottom: '0.5rem', left: '1.75rem', right: '1.75rem' }}
+                        background={{ color: Theme.background.modal }}
+                    >
+                        <i-stack id="pnlHeader" direction="horizontal" alignItems="center" justifyContent="end">
+                        </i-stack>
+                    </i-panel>
                     <i-panel background={{ color: Theme.background.main }}>
                         <i-stack
                             id="pnlLoading"
@@ -532,6 +551,7 @@ export default class ScomTonSubscription extends Module {
                                             rightIcon={{ visible: false, fill: Theme.colors.primary.contrastText }}
                                             background={{ color: Theme.background.gradient }}
                                             border={{ radius: 12 }}
+                                            enabled={false}
                                             onClick={this.onSubmit}
                                         ></i-button>
                                     </i-stack>

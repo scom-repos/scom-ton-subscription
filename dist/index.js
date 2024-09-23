@@ -375,19 +375,30 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.btnTonSubmit.rightIcon.spin = submitting;
             this.btnTonSubmit.rightIcon.visible = submitting;
         }
-        async connectTonWallet() {
+        initTonWallet() {
             try {
                 let UI = window['TON_CONNECT_UI'];
                 this.tonConnectUI = new UI.TonConnectUI({
                     manifestUrl: 'https://ton.noto.fan/tonconnect/manifest.json',
-                    buttonRootId: 'btnTonSubmit'
+                    buttonRootId: 'pnlHeader'
                 });
                 this.tonConnectUI.connectionRestored.then(async (restored) => {
-                    if (!restored)
-                        await this.tonConnectUI.openModal();
                     this.isWalletConnected = this.tonConnectUI.connected;
+                    this.btnTonSubmit.enabled = true;
                     this.determineBtnSubmitCaption();
                 });
+                this.tonConnectUI.onStatusChange((walletAndwalletInfo) => {
+                    this.isWalletConnected = !!walletAndwalletInfo;
+                    this.determineBtnSubmitCaption();
+                });
+            }
+            catch (err) {
+                alert(err);
+            }
+        }
+        async connectTonWallet() {
+            try {
+                await this.tonConnectUI.openModal();
             }
             catch (err) {
                 alert(err);
@@ -441,7 +452,8 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 // you can use signed boc to find the transaction 
                 // const someTxData = await myAppExplorerService.getTransaction(result.boc);
                 // alert('Transaction was sent successfully', someTxData);
-                // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, "");
+                // const txHash = this.subscriptionModel.toHash(result.boc);
+                // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
                 if (this.onMintedNFT)
                     this.onMintedNFT();
             }
@@ -461,12 +473,15 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 networks: [],
                 showHeader: false,
             };
+            this.initTonWallet();
             if (this.containerDapp?.setData)
                 await this.containerDapp.setData(data);
         }
         render() {
             return (this.$render("i-panel", null,
                 this.$render("i-scom-dapp-container", { id: "containerDapp" },
+                    this.$render("i-panel", { padding: { top: '0.5rem', bottom: '0.5rem', left: '1.75rem', right: '1.75rem' }, background: { color: Theme.background.modal } },
+                        this.$render("i-stack", { id: "pnlHeader", direction: "horizontal", alignItems: "center", justifyContent: "end" })),
                     this.$render("i-panel", { background: { color: Theme.background.main } },
                         this.$render("i-stack", { id: "pnlLoading", direction: "vertical", height: "100%", alignItems: "center", justifyContent: "center", padding: { top: "1rem", bottom: "1rem", left: "1rem", right: "1rem" }, visible: false },
                             this.$render("i-panel", { class: 'spinner' })),
@@ -497,7 +512,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                                             this.$render("i-icon", { id: "iconOrderTotal", width: 20, height: 20, name: "question-circle", fill: Theme.background.modal, tooltip: { content: 'A commission fee of 0% will be applied to the amount you input.' } })),
                                         this.$render("i-label", { id: 'lblOrderTotal', font: { size: '1rem' }, caption: "0" })),
                                     this.$render("i-stack", { direction: "vertical", width: "100%", justifyContent: "center", alignItems: "center", margin: { top: '0.5rem' }, gap: 8 },
-                                        this.$render("i-button", { id: 'btnTonSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, onClick: this.onSubmit }))))),
+                                        this.$render("i-button", { id: 'btnTonSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, enabled: false, onClick: this.onSubmit }))))),
                         this.$render("i-scom-tx-status-modal", { id: "txStatusModal" })))));
         }
     };

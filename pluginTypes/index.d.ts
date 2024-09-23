@@ -90,6 +90,7 @@ declare module "@scom/scom-ton-subscription" {
     }
     export default class ScomTonSubscription extends Module {
         private containerDapp;
+        private pnlHeader;
         private pnlLoading;
         private pnlBody;
         private pnlStartDate;
@@ -150,6 +151,7 @@ declare module "@scom/scom-ton-subscription" {
         private onDurationChanged;
         private onDurationUnitChanged;
         private updateSubmitButton;
+        private initTonWallet;
         private connectTonWallet;
         private determineBtnSubmitCaption;
         private showTxStatusModal;
