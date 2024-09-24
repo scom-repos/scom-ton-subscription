@@ -404,7 +404,7 @@ export default class ScomTonSubscription extends Module {
         
         try {
             const result = await this.tonConnectUI.sendTransaction(transaction);
-            alert(JSON.stringify(result));
+            // alert(JSON.stringify(result));
             // you can use signed boc to find the transaction 
             // const someTxData = await myAppExplorerService.getTransaction(result.boc);
             // alert('Transaction was sent successfully', someTxData);

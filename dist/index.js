@@ -94,16 +94,46 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                         'tonweb': 'tonweb'
                     }
                 });
-                components_2.RequireJS.require(['tonweb'], function (tonweb) {
-                    self.tonweb = new tonweb();
+                components_2.RequireJS.require(['tonweb'], function (TonWeb) {
+                    self.tonweb = new TonWeb();
                     resolve(self.tonweb);
                 });
             });
         }
+        async getTransactionHashByMessageHash(messageHash) {
+            return new Promise(async (resolve, reject) => {
+                // sleep for 20 seconds
+                setTimeout(async () => {
+                    const refetchLimit = 5;
+                    let refetches = 0;
+                    // wait for transaction
+                    const interval = setInterval(async () => {
+                        refetches += 1;
+                        try {
+                            const TONCENTER_API_ENDPOINT = 'https://toncenter.com/api/v3';
+                            const response = await fetch(`${TONCENTER_API_ENDPOINT}/transactionsByMessage?msg_hash=${encodeURIComponent(messageHash)}&limit=1&offset=0`);
+                            const data = await response.json();
+                            const transaction = data.transactions[0];
+                            if (transaction.hash) {
+                                clearInterval(interval);
+                                resolve(transaction.hash);
+                            }
+                        }
+                        catch (err) {
+                        }
+                        if (refetches >= refetchLimit) {
+                            clearInterval(interval);
+                            reject(new Error('Failed to get transaction hash'));
+                        }
+                    }, 8000);
+                }, 20000);
+            });
+        }
         async getTransactionHash(boc) {
             const bocCellBytes = await this.tonweb.boc.Cell.oneFromBoc(this.tonweb.utils.base64ToBytes(boc)).hash();
-            const hashBase64 = this.tonweb.utils.bytesToBase64(bocCellBytes);
-            return hashBase64;
+            const messageHash = this.tonweb.utils.bytesToBase64(bocCellBytes);
+            const transactionHash = await this.getTransactionHashByMessageHash(messageHash);
+            return transactionHash;
         }
         async getTokenInfo(address, chainId) {
             let token;
@@ -469,7 +499,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             };
             try {
                 const result = await this.tonConnectUI.sendTransaction(transaction);
-                alert(JSON.stringify(result));
+                // alert(JSON.stringify(result));
                 // you can use signed boc to find the transaction 
                 // const someTxData = await myAppExplorerService.getTransaction(result.boc);
                 // alert('Transaction was sent successfully', someTxData);

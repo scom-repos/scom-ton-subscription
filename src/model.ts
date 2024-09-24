@@ -82,17 +82,47 @@ export class SubscriptionModel {
                     'tonweb': 'tonweb'
                 }
             })
-            RequireJS.require(['tonweb'], function (tonweb: any) {
-                self.tonweb = new tonweb();
+            RequireJS.require(['tonweb'], function (TonWeb: any) {
+                self.tonweb = new TonWeb();
                 resolve(self.tonweb);
             });
         })
     }
+    
+    async getTransactionHashByMessageHash(messageHash: string): Promise<string> {
+        return new Promise(async (resolve, reject) => {
+            // sleep for 20 seconds
+            setTimeout(async () => {
+                const refetchLimit = 5;
+                let refetches = 0;
+                // wait for transaction
+                const interval = setInterval(async () => {
+                    refetches += 1;
+                    try {
+                        const TONCENTER_API_ENDPOINT = 'https://toncenter.com/api/v3';
+                        const response = await fetch(`${TONCENTER_API_ENDPOINT}/transactionsByMessage?msg_hash=${encodeURIComponent(messageHash)}&limit=1&offset=0`);
+                        const data = await response.json();
+                        const transaction = data.transactions[0];
+                        if (transaction.hash) {
+                            clearInterval(interval);
+                            resolve(transaction.hash);
+                        }
+                    } catch (err) {
+                    }
+                    if (refetches >= refetchLimit) {
+                        clearInterval(interval);
+                        reject(new Error('Failed to get transaction hash'));
+                    }
+                }, 8000);
+            }, 20000);
+        });
+    }
 
     async getTransactionHash(boc: string) {
         const bocCellBytes = await this.tonweb.boc.Cell.oneFromBoc(this.tonweb.utils.base64ToBytes(boc)).hash();
-        const hashBase64 = this.tonweb.utils.bytesToBase64(bocCellBytes);
-        return hashBase64;
+        const messageHash = this.tonweb.utils.bytesToBase64(bocCellBytes);
+        const transactionHash = await this.getTransactionHashByMessageHash(messageHash);
+        return transactionHash;
     }
 
     async getTokenInfo(address: string, chainId: number) {

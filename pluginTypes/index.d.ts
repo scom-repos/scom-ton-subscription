@@ -71,7 +71,8 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         connectWallet(): Promise<void>;
         isClientWalletConnected(): boolean;
         loadLib(moduleDir: string): Promise<unknown>;
-        getTransactionHash(boc: string): Promise<any>;
+        getTransactionHashByMessageHash(messageHash: string): Promise<string>;
+        getTransactionHash(boc: string): Promise<string>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
     }
