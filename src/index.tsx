@@ -105,7 +105,7 @@ export default class ScomTonSubscription extends Module {
     }
     
     private get basePrice() {
-        const price = new BigNumber(this._data.tokenAmount);
+        const price = new BigNumber(this._data?.tokenAmount || 0);
         let basePrice: BigNumber = price;
         if (this.discountApplied) {
             if (this.discountApplied.discountPercentage > 0) {
@@ -119,7 +119,7 @@ export default class ScomTonSubscription extends Module {
 
     private get totalAmount() {
         let basePrice = this.basePrice;
-        const pricePerDay = basePrice.div(this._data.durationInDays);
+        const pricePerDay = basePrice.div(this._data?.durationInDays || 1);
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
         return pricePerDay.times(days);
     }

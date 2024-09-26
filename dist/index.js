@@ -230,7 +230,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             return (this.comboDurationUnit.selectedItem?.value || 'days');
         }
         get basePrice() {
-            const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
+            const price = new eth_wallet_2.BigNumber(this._data?.tokenAmount || 0);
             let basePrice = price;
             if (this.discountApplied) {
                 if (this.discountApplied.discountPercentage > 0) {
@@ -244,7 +244,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         get totalAmount() {
             let basePrice = this.basePrice;
-            const pricePerDay = basePrice.div(this._data.durationInDays);
+            const pricePerDay = basePrice.div(this._data?.durationInDays || 1);
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
             return pricePerDay.times(days);
         }
