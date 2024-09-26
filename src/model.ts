@@ -91,9 +91,9 @@ export class SubscriptionModel {
     
     async getTransactionHashByMessageHash(messageHash: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
-            // sleep for 20 seconds
+            // sleep for 10 seconds
             setTimeout(async () => {
-                const refetchLimit = 5;
+                const refetchLimit = 10;
                 let refetches = 0;
                 // wait for transaction
                 const interval = setInterval(async () => {
@@ -114,7 +114,7 @@ export class SubscriptionModel {
                         reject(new Error('Failed to get transaction hash'));
                     }
                 }, 8000);
-            }, 20000);
+            }, 10000);
         });
     }
 

@@ -102,9 +102,9 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
         }
         async getTransactionHashByMessageHash(messageHash) {
             return new Promise(async (resolve, reject) => {
-                // sleep for 20 seconds
+                // sleep for 10 seconds
                 setTimeout(async () => {
-                    const refetchLimit = 5;
+                    const refetchLimit = 10;
                     let refetches = 0;
                     // wait for transaction
                     const interval = setInterval(async () => {
@@ -126,7 +126,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                             reject(new Error('Failed to get transaction hash'));
                         }
                     }, 8000);
-                }, 20000);
+                }, 10000);
             });
         }
         async getTransactionHash(boc) {
