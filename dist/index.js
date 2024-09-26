@@ -135,6 +135,13 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             const transactionHash = await this.getTransactionHashByMessageHash(messageHash);
             return transactionHash;
         }
+        async constructPayload(msg) {
+            const cell = new this.tonweb.boc.Cell();
+            cell.bits.writeUint(0, 32);
+            cell.bits.writeString(msg);
+            const bocBytes = await cell.toBoc();
+            return this.tonweb.utils.bytesToBase64(bocBytes);
+        }
         async getTokenInfo(address, chainId) {
             let token;
             const wallet = eth_wallet_1.Wallet.getClientInstance();

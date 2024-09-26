@@ -21,7 +21,9 @@ export default class Module1 extends Module {
       "durationInDays": 1,
       "discountRules": [],
       "affiliates": [],
-      "recipient": "UQCy7Fo9RLV7l5bSb_vlR7X7s0GJHJsdWb4Lgly_7qgYtbfc"
+      "recipient": "UQCy7Fo9RLV7l5bSb_vlR7X7s0GJHJsdWb4Lgly_7qgYtbfc",
+      "communityId": "EcoInnovatorsHub",
+      "creatorId": "npub1lxfc972evue6nrhfam5djmp8c2afhnl5dky8c4kwveltg0tz3mzsj4wlcx"
     });
   }
 

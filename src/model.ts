@@ -125,6 +125,14 @@ export class SubscriptionModel {
         return transactionHash;
     }
 
+    async constructPayload(msg: string) {
+        const cell = new this.tonweb.boc.Cell();
+        cell.bits.writeUint(0, 32);
+        cell.bits.writeString(msg);
+        const bocBytes = await cell.toBoc();
+        return this.tonweb.utils.bytesToBase64(bocBytes);
+    }
+
     async getTokenInfo(address: string, chainId: number) {
         let token: ITokenObject;
         const wallet = Wallet.getClientInstance();

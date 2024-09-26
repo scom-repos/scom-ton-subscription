@@ -73,6 +73,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         loadLib(moduleDir: string): Promise<unknown>;
         getTransactionHashByMessageHash(messageHash: string): Promise<string>;
         getTransactionHash(boc: string): Promise<string>;
+        constructPayload(msg: string): Promise<any>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
     }
