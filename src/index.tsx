@@ -390,7 +390,7 @@ export default class ScomTonSubscription extends Module {
         let subscriptionFee = this.totalAmount;
         let subscriptionFeeToAddress = this._data.recipient;
         
-        const payload = await this.subscriptionModel.constructPayload(`${this._data.creatorId}:${this._data.communityId}`);
+        const payload = await this.subscriptionModel.constructPayload(`${this._data.creatorId}:${this._data.communityId}:${startTime}:${endTime}`);
         //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
         const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec

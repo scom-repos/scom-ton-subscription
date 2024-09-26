@@ -493,6 +493,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
             let subscriptionFee = this.totalAmount;
             let subscriptionFeeToAddress = this._data.recipient;
+            const payload = await this.subscriptionModel.constructPayload(`${this._data.creatorId}:${this._data.communityId}:${startTime}:${endTime}`);
             //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 60,
@@ -500,7 +501,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                     {
                         address: subscriptionFeeToAddress,
                         amount: subscriptionFee.times(1e9).toFixed(),
-                        // payload: "base64bocblahblahblah==" // just for instance. Replace with your transaction payload or remove
+                        payload: payload // just for instance. Replace with your transaction payload or remove
                     }
                 ]
             };
