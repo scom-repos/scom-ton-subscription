@@ -17,7 +17,7 @@ import {
 } from '@ijstech/components';
 import { BigNumber, Utils } from '@ijstech/eth-wallet';
 import ScomDappContainer from '@scom/scom-dapp-container';
-import { SocialDataManager } from '@scom/scom-social-sdk';
+import { Nip19, SocialDataManager } from '@scom/scom-social-sdk';
 import { ITokenObject } from '@scom/scom-token-list';
 import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
@@ -390,7 +390,9 @@ export default class ScomTonSubscription extends Module {
         let subscriptionFee = this.totalAmount;
         let subscriptionFeeToAddress = this._data.recipient;
         
-        const payload = await this.subscriptionModel.constructPayload(`${this._data.creatorId}:${this._data.communityId}:${startTime}:${endTime}`);
+        const creatorPubkey = Nip19.decode(this._data.creatorId).data as string;
+        const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
+        const payload = await this.subscriptionModel.constructPayload(comment);
         //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
         const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec

@@ -129,7 +129,7 @@ export class SubscriptionModel {
         const cell = new this.tonweb.boc.Cell();
         cell.bits.writeUint(0, 32);
         cell.bits.writeString(msg);
-        const bocBytes = await cell.toBoc();
+        const bocBytes = await cell.toBoc(false, true); // has_idx = false, hash_crc32 = true
         return this.tonweb.utils.bytesToBase64(bocBytes);
     }
 
