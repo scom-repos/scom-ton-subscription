@@ -139,7 +139,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             const cell = new this.tonweb.boc.Cell();
             cell.bits.writeUint(0, 32);
             cell.bits.writeString(msg);
-            const bocBytes = await cell.toBoc();
+            const bocBytes = await cell.toBoc(false, true); // has_idx = false, hash_crc32 = true
             return this.tonweb.utils.bytesToBase64(bocBytes);
         }
         async getTokenInfo(address, chainId) {
@@ -174,7 +174,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
     }
     exports.SubscriptionModel = SubscriptionModel;
 });
-define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet", "@scom/scom-ton-subscription/index.css.ts", "@scom/scom-ton-subscription/model.ts"], function (require, exports, components_3, eth_wallet_2, index_css_1, model_1) {
+define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet", "@scom/scom-social-sdk", "@scom/scom-ton-subscription/index.css.ts", "@scom/scom-ton-subscription/model.ts"], function (require, exports, components_3, eth_wallet_2, scom_social_sdk_1, index_css_1, model_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const Theme = components_3.Styles.Theme.ThemeVars;
@@ -493,7 +493,9 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
             let subscriptionFee = this.totalAmount;
             let subscriptionFeeToAddress = this._data.recipient;
-            const payload = await this.subscriptionModel.constructPayload(`${this._data.creatorId}:${this._data.communityId}:${startTime}:${endTime}`);
+            const creatorPubkey = scom_social_sdk_1.Nip19.decode(this._data.creatorId).data;
+            const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
+            const payload = await this.subscriptionModel.constructPayload(comment);
             //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 60,
