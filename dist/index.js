@@ -533,6 +533,11 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 networks: [],
                 showHeader: false,
             };
+            const telegram = window['Telegram'];
+            if (telegram) {
+                const app = telegram.WebApp;
+                app.MainButton.setText("Subscribe");
+            }
             this.initTonWallet();
             if (this.containerDapp?.setData)
                 await this.containerDapp.setData(data);
