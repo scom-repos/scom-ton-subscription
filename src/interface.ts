@@ -12,6 +12,12 @@ export declare enum PaymentModel {
     Subscription = "Subscription"
 }
 
+export declare enum NetworkType {
+    EVM = "EVM",
+    TON = "TON",
+    Telegram = "Telegram"
+}
+
 export interface ISubscriptionDiscountRule {
     id: number;
     name: string;
@@ -29,6 +35,7 @@ export interface ITonSubscription {
     communityId?: string;
     name?: string;
     paymentModel?: PaymentModel;
+    networkType?: NetworkType;
     chainId?: number;
     tokenAddress?: string;
     tokenType?: TokenType;

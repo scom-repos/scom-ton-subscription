@@ -21,7 +21,7 @@ import { Nip19, SocialDataManager } from '@scom/scom-social-sdk';
 import { ITokenObject } from '@scom/scom-token-list';
 import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
-import { ISubscriptionDiscountRule, ITonSubscription } from './interface';
+import { ISubscriptionDiscountRule, ITonSubscription, NetworkType } from './interface';
 import { SubscriptionModel } from './model';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -374,6 +374,36 @@ export default class ScomTonSubscription extends Module {
         }
         this.doSubmitAction();
     }
+    private async handleTonPayment() {
+        const startTime = this.edtStartDate.value.unix();
+        const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
+        let subscriptionFee = this.totalAmount;
+        let subscriptionFeeToAddress = this._data.recipient;
+
+        const creatorPubkey = Nip19.decode(this._data.creatorId).data as string;
+        const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
+        const payload = await this.subscriptionModel.constructPayload(comment);
+        //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
+            messages: [
+                {
+                    address: subscriptionFeeToAddress,
+                    amount: subscriptionFee.times(1e9).toFixed(),
+                    payload: payload
+                }
+            ]
+        };
+        
+        try {
+            const result = await this.tonConnectUI.sendTransaction(transaction);
+            const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
+            await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
+            if (this.onMintedNFT) this.onMintedNFT();
+        } catch (e) {
+            console.error(e);
+        }
+    }
     private async doSubmitAction() {
         if (!this._data) return;
         if (!this.edtStartDate.value) {
@@ -385,37 +415,17 @@ export default class ScomTonSubscription extends Module {
             return;
         }
         this.updateSubmitButton(true);
-        const startTime = this.edtStartDate.value.unix();
-        const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
-        let subscriptionFee = this.totalAmount;
-        let subscriptionFeeToAddress = this._data.recipient;
-        
-        const creatorPubkey = Nip19.decode(this._data.creatorId).data as string;
-        const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
-        const payload = await this.subscriptionModel.constructPayload(comment);
-        //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
-        const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
-            messages: [
-                {
-                    address: subscriptionFeeToAddress,
-                    amount: subscriptionFee.times(1e9).toFixed(),
-                    payload: payload // just for instance. Replace with your transaction payload or remove
-                }
-            ]
-        };
-        
-        try {
-            const result = await this.tonConnectUI.sendTransaction(transaction);
-            // alert(JSON.stringify(result));
-            // you can use signed boc to find the transaction 
-            // const someTxData = await myAppExplorerService.getTransaction(result.boc);
-            // alert('Transaction was sent successfully', someTxData);
-            const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
-            await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
-            if (this.onMintedNFT) this.onMintedNFT();
-        } catch (e) {
-            console.error(e);
+        if (this._data.networkType === NetworkType.Telegram) {
+            await this.subscriptionModel.createInvoice(
+                this._data.communityId,
+                this.duration,
+                this.durationUnit,
+                this._data.currency,
+                this.totalAmount,
+                ""
+            );
+        } else {
+            await this.handleTonPayment();
         }
         this.updateSubmitButton(false);
     }
@@ -431,11 +441,6 @@ export default class ScomTonSubscription extends Module {
             wallets: this.subscriptionModel.wallets,
             networks: [],
             showHeader: false,
-        }
-        const telegram = window['Telegram'];
-        if (telegram) {
-            const app = telegram.WebApp;
-            app.MainButton.setText("Subscribe");
         }
         this.initTonWallet();
         if (this.containerDapp?.setData) await this.containerDapp.setData(data);

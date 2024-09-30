@@ -5,6 +5,7 @@ import { ITokenObject } from '@scom/scom-token-list';
 import { SocialDataManager } from "@scom/scom-social-sdk";
 
 export class SubscriptionModel {
+    private apiEndpoint = "";
     private tonweb;
 
     get wallets(): IWalletPlugin[] {
@@ -169,5 +170,32 @@ export class SubscriptionModel {
             end: endTime,
             txHash: txHash
         });
+    }
+
+    async createInvoice(
+        communityId: string,
+        duration: number,
+        durationUnit: 'days' | 'months' | 'years',
+        currency: string,
+        price: BigNumber,
+        chatId: string,
+        photoUrl?: string
+    ) {
+        const response = await fetch(`${this.apiEndpoint}/invoice`, {
+            method: 'POST',
+            body: JSON.stringify({
+                chatId: chatId,
+                title: `Subscribe ${communityId}`,
+                description: `${duration}-${durationUnit.charAt(0).toUpperCase() + durationUnit.slice(1, -1)} Subscription`,
+                currency: currency,
+                prices: JSON.stringify([{
+                    label: 'Subscription Fee',
+                    amount: price.shiftedBy(2).toFixed(0)
+                }]),
+                photoUrl
+            })
+        });
+        let result = await response.json();
+        return result;
     }
 }
