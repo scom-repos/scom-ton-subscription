@@ -25,6 +25,9 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.SubscriptionModel = void 0;
     class SubscriptionModel {
+        constructor() {
+            this.apiEndpoint = "";
+        }
         get wallets() {
             return [
                 {
@@ -171,10 +174,28 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                 txHash: txHash
             });
         }
+        async createInvoice(communityId, duration, durationUnit, currency, price, chatId, photoUrl) {
+            const response = await fetch(`${this.apiEndpoint}/invoice`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    chatId: chatId,
+                    title: `Subscribe ${communityId}`,
+                    description: `${duration}-${durationUnit.charAt(0).toUpperCase() + durationUnit.slice(1, -1)} Subscription`,
+                    currency: currency,
+                    prices: JSON.stringify([{
+                            label: 'Subscription Fee',
+                            amount: price.shiftedBy(2).toFixed(0)
+                        }]),
+                    photoUrl
+                })
+            });
+            let result = await response.json();
+            return result;
+        }
     }
     exports.SubscriptionModel = SubscriptionModel;
 });
-define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet", "@scom/scom-social-sdk", "@scom/scom-ton-subscription/index.css.ts", "@scom/scom-ton-subscription/model.ts"], function (require, exports, components_3, eth_wallet_2, scom_social_sdk_1, index_css_1, model_1) {
+define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet", "@scom/scom-social-sdk", "@scom/scom-ton-subscription/index.css.ts", "@scom/scom-ton-subscription/interface.ts", "@scom/scom-ton-subscription/model.ts"], function (require, exports, components_3, eth_wallet_2, scom_social_sdk_1, index_css_1, interface_1, model_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     const Theme = components_3.Styles.Theme.ThemeVars;
@@ -477,6 +498,37 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             }
             this.doSubmitAction();
         }
+        async handleTonPayment() {
+            const startTime = this.edtStartDate.value.unix();
+            const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
+            let subscriptionFee = this.totalAmount;
+            let subscriptionFeeToAddress = this._data.recipient;
+            const creatorPubkey = scom_social_sdk_1.Nip19.decode(this._data.creatorId).data;
+            // const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
+            const comment = `${creatorPubkey}:${this._data.communityId}:${startTime}:${endTime}`; //FIXME: selfPubkey is removed because the comment is too long. 
+            const payload = await this.subscriptionModel.constructPayload(comment);
+            //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 60,
+                messages: [
+                    {
+                        address: subscriptionFeeToAddress,
+                        amount: subscriptionFee.times(1e9).toFixed(),
+                        payload: payload
+                    }
+                ]
+            };
+            try {
+                const result = await this.tonConnectUI.sendTransaction(transaction);
+                const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
+                await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
+                if (this.onMintedNFT)
+                    this.onMintedNFT();
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
         async doSubmitAction() {
             if (!this._data)
                 return;
@@ -489,37 +541,11 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 return;
             }
             this.updateSubmitButton(true);
-            const startTime = this.edtStartDate.value.unix();
-            const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
-            let subscriptionFee = this.totalAmount;
-            let subscriptionFeeToAddress = this._data.recipient;
-            const creatorPubkey = scom_social_sdk_1.Nip19.decode(this._data.creatorId).data;
-            const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
-            const payload = await this.subscriptionModel.constructPayload(comment);
-            //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
-            const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 60,
-                messages: [
-                    {
-                        address: subscriptionFeeToAddress,
-                        amount: subscriptionFee.times(1e9).toFixed(),
-                        payload: payload // just for instance. Replace with your transaction payload or remove
-                    }
-                ]
-            };
-            try {
-                const result = await this.tonConnectUI.sendTransaction(transaction);
-                // alert(JSON.stringify(result));
-                // you can use signed boc to find the transaction 
-                // const someTxData = await myAppExplorerService.getTransaction(result.boc);
-                // alert('Transaction was sent successfully', someTxData);
-                const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
-                await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
-                if (this.onMintedNFT)
-                    this.onMintedNFT();
+            if (this._data.networkType === interface_1.NetworkType.Telegram) {
+                await this.subscriptionModel.createInvoice(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount, "");
             }
-            catch (e) {
-                console.error(e);
+            else {
+                await this.handleTonPayment();
             }
             this.updateSubmitButton(false);
         }
@@ -535,11 +561,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 networks: [],
                 showHeader: false,
             };
-            const telegram = window['Telegram'];
-            if (telegram) {
-                const app = telegram.WebApp;
-                app.MainButton.setText("Subscribe");
-            }
             this.initTonWallet();
             if (this.containerDapp?.setData)
                 await this.containerDapp.setData(data);

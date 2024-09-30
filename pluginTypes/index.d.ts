@@ -14,6 +14,11 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         OneTimePurchase = "OneTimePurchase",
         Subscription = "Subscription"
     }
+    export enum NetworkType {
+        EVM = "EVM",
+        TON = "TON",
+        Telegram = "Telegram"
+    }
     export interface ISubscriptionDiscountRule {
         id: number;
         name: string;
@@ -30,6 +35,7 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         communityId?: string;
         name?: string;
         paymentModel?: PaymentModel;
+        networkType?: NetworkType;
         chainId?: number;
         tokenAddress?: string;
         tokenType?: TokenType;
@@ -58,6 +64,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     import { ITokenObject } from '@scom/scom-token-list';
     import { SocialDataManager } from "@scom/scom-social-sdk";
     export class SubscriptionModel {
+        private apiEndpoint;
         private tonweb;
         get wallets(): IWalletPlugin[];
         get tokens(): ITokenObject[];
@@ -76,6 +83,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         constructPayload(msg: string): Promise<any>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
+        createInvoice(communityId: string, duration: number, durationUnit: 'days' | 'months' | 'years', currency: string, price: BigNumber, chatId: string, photoUrl?: string): Promise<any>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
@@ -161,6 +169,7 @@ declare module "@scom/scom-ton-subscription" {
         private determineBtnSubmitCaption;
         private showTxStatusModal;
         private onSubmit;
+        private handleTonPayment;
         private doSubmitAction;
         init(): Promise<void>;
         render(): any;
