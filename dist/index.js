@@ -33,7 +33,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
     exports.SubscriptionModel = void 0;
     class SubscriptionModel {
         constructor() {
-            this.apiEndpoint = "";
+            this.apiEndpoint = "http://localhost:3000";
         }
         get wallets() {
             return [
@@ -181,11 +181,13 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                 txHash: txHash
             });
         }
-        async createInvoice(communityId, duration, durationUnit, currency, price, chatId, photoUrl) {
+        async createInvoiceLink(communityId, duration, durationUnit, currency, price, photoUrl) {
             const response = await fetch(`${this.apiEndpoint}/invoice`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 method: 'POST',
                 body: JSON.stringify({
-                    chatId: chatId,
                     title: `Subscribe ${communityId}`,
                     description: `${duration}-${durationUnit.charAt(0).toUpperCase() + durationUnit.slice(1, -1)} Subscription`,
                     currency: currency,
@@ -197,7 +199,7 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                 })
             });
             let result = await response.json();
-            return result;
+            return result?.data?.invoiceLink || '';
         }
     }
     exports.SubscriptionModel = SubscriptionModel;
@@ -505,6 +507,34 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             }
             this.doSubmitAction();
         }
+        async handleTelegramPayment() {
+            const webApp = window['Telegram']?.WebApp;
+            try {
+                const invoiceSupported = webApp?.isVersionAtLeast('6.1');
+                if (invoiceSupported) {
+                    const invoiceLink = await this.subscriptionModel.createInvoiceLink(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount);
+                    webApp?.openInvoice(invoiceLink, function (status) {
+                        webApp?.MainButton.hideProgress();
+                        if (status == 'paid') {
+                            webApp?.close();
+                        }
+                        else if (status == 'failed') {
+                            webApp?.HapticFeedback.notificationOccurred('error');
+                        }
+                        else {
+                            webApp?.HapticFeedback.notificationOccurred('warning');
+                        }
+                    });
+                }
+                else {
+                    this.showTxStatusModal('error', "Some features not available. Please update your telegram app!");
+                }
+            }
+            catch (e) {
+                this.showTxStatusModal('error', "Some error occurred while processing order!");
+                console.error(e);
+            }
+        }
         async handleTonPayment() {
             const startTime = this.edtStartDate.value.unix();
             const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
@@ -549,7 +579,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             }
             this.updateSubmitButton(true);
             if (this._data.networkType === interface_1.NetworkType.Telegram) {
-                await this.subscriptionModel.createInvoice(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount, "");
+                await this.handleTelegramPayment();
             }
             else {
                 await this.handleTonPayment();

@@ -83,7 +83,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         constructPayload(msg: string): Promise<any>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
-        createInvoice(communityId: string, duration: number, durationUnit: 'days' | 'months' | 'years', currency: string, price: BigNumber, chatId: string, photoUrl?: string): Promise<any>;
+        createInvoiceLink(communityId: string, duration: number, durationUnit: 'days' | 'months' | 'years', currency: string, price: BigNumber, photoUrl?: string): Promise<string>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
@@ -169,6 +169,7 @@ declare module "@scom/scom-ton-subscription" {
         private determineBtnSubmitCaption;
         private showTxStatusModal;
         private onSubmit;
+        private handleTelegramPayment;
         private handleTonPayment;
         private doSubmitAction;
         init(): Promise<void>;

@@ -374,6 +374,36 @@ export default class ScomTonSubscription extends Module {
         }
         this.doSubmitAction();
     }
+    private async handleTelegramPayment() {
+        const webApp = window['Telegram']?.WebApp;
+        try {
+            const invoiceSupported = webApp?.isVersionAtLeast('6.1');
+            if (invoiceSupported) {
+                const invoiceLink = await this.subscriptionModel.createInvoiceLink(
+                    this._data.communityId,
+                    this.duration,
+                    this.durationUnit,
+                    this._data.currency,
+                    this.totalAmount
+                );
+                webApp?.openInvoice(invoiceLink, function (status: string) {
+                    webApp?.MainButton.hideProgress()
+                    if (status == 'paid') {
+                        webApp?.close();
+                    } else if (status == 'failed') {
+                        webApp?.HapticFeedback.notificationOccurred('error');
+                    } else {
+                        webApp?.HapticFeedback.notificationOccurred('warning');
+                    }
+                });
+            } else {
+                this.showTxStatusModal('error', "Some features not available. Please update your telegram app!");
+            }
+        } catch (e) {
+            this.showTxStatusModal('error', "Some error occurred while processing order!");
+            console.error(e);
+        }
+    }
     private async handleTonPayment() {
         const startTime = this.edtStartDate.value.unix();
         const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
@@ -417,14 +447,7 @@ export default class ScomTonSubscription extends Module {
         }
         this.updateSubmitButton(true);
         if (this._data.networkType === NetworkType.Telegram) {
-            await this.subscriptionModel.createInvoice(
-                this._data.communityId,
-                this.duration,
-                this.durationUnit,
-                this._data.currency,
-                this.totalAmount,
-                ""
-            );
+            await this.handleTelegramPayment();
         } else {
             await this.handleTonPayment();
         }
