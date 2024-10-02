@@ -193,7 +193,7 @@ export class SubscriptionModel {
                     label: 'Subscription Fee',
                     amount: price.shiftedBy(2).toFixed(0)
                 }]),
-                photoUrl: photoUrl || ''
+                photoUrl
             })
         });
         let result = await response.json();
