@@ -519,11 +519,17 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             try {
                 const invoiceSupported = webApp?.isVersionAtLeast('6.1');
                 if (invoiceSupported) {
+                    const startTime = this.edtStartDate.value.unix();
+                    const endTime = components_3.moment.unix(startTime).add(this.duration, this.durationUnit).unix();
                     const invoiceLink = await this.subscriptionModel.createInvoiceLink(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount, this._data.photoUrl);
-                    webApp?.openInvoice(invoiceLink, function (status) {
+                    let self = this;
+                    webApp?.openInvoice(invoiceLink, async function (status) {
                         webApp?.MainButton.hideProgress();
                         if (status == 'paid') {
                             webApp?.close();
+                            await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
+                            if (self.onMintedNFT)
+                                self.onMintedNFT();
                         }
                         else if (status == 'failed') {
                             webApp?.HapticFeedback.notificationOccurred('error');
