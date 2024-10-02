@@ -128,7 +128,6 @@ declare module "@scom/scom-ton-subscription" {
         private _isRenewal;
         private _renewalDate;
         private _data;
-        private token;
         private _dataManager;
         onMintedNFT: () => void;
         get dataManager(): SocialDataManager;
@@ -141,6 +140,7 @@ declare module "@scom/scom-ton-subscription" {
         private get durationUnit();
         private get basePrice();
         private get totalAmount();
+        private get currency();
         showLoading(): void;
         hideLoading(): void;
         getConfigurators(): {
