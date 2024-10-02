@@ -412,8 +412,7 @@ export default class ScomTonSubscription extends Module {
         let subscriptionFeeToAddress = this._data.recipient;
 
         const creatorPubkey = Nip19.decode(this._data.creatorId).data as string;
-        // const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
-        const comment = `${creatorPubkey}:${this._data.communityId}:${startTime}:${endTime}`; //FIXME: selfPubkey is removed because the comment is too long. 
+        const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
         const payload = await this.subscriptionModel.constructPayload(comment);
         //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
         const transaction = {

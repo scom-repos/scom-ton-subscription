@@ -33,6 +33,7 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
     export interface ITonSubscription {
         creatorId?: string;
         communityId?: string;
+        photoUrl?: string;
         name?: string;
         paymentModel?: PaymentModel;
         networkType?: NetworkType;
@@ -66,6 +67,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     export class SubscriptionModel {
         private apiEndpoint;
         private tonweb;
+        private toncore;
         get wallets(): IWalletPlugin[];
         get tokens(): ITokenObject[];
         get durationUnits(): {
