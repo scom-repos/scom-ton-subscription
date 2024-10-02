@@ -7,6 +7,7 @@ import { SocialDataManager } from "@scom/scom-social-sdk";
 export class SubscriptionModel {
     private apiEndpoint = "http://localhost:3000";
     private tonweb;
+    private toncore;
 
     get wallets(): IWalletPlugin[] {
         return [
@@ -80,11 +81,13 @@ export class SubscriptionModel {
             RequireJS.config({
                 baseUrl: `${moduleDir}/lib`,
                 paths: {
-                    'tonweb': 'tonweb'
+                    'tonweb': 'tonweb',
+                    'ton-core': 'ton-core',
                 }
             })
-            RequireJS.require(['tonweb'], function (TonWeb: any) {
+            RequireJS.require(['tonweb', 'ton-core'], function (TonWeb: any, TonCore: any) {
                 self.tonweb = new TonWeb();
+                self.toncore = TonCore;
                 resolve(self.tonweb);
             });
         })
@@ -127,11 +130,12 @@ export class SubscriptionModel {
     }
 
     async constructPayload(msg: string) {
-        const cell = new this.tonweb.boc.Cell();
-        cell.bits.writeUint(0, 32);
-        cell.bits.writeString(msg);
-        const bocBytes = await cell.toBoc(false, true); // has_idx = false, hash_crc32 = true
-        return this.tonweb.utils.bytesToBase64(bocBytes);
+        const body = this.toncore.beginCell()
+            .storeUint(0, 32) 
+            .storeStringTail(msg) 
+            .endCell();
+        const payload =  body.toBoc().toString("base64");
+        return payload;
     }
 
     async getTokenInfo(address: string, chainId: number) {

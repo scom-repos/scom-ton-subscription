@@ -67,6 +67,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     export class SubscriptionModel {
         private apiEndpoint;
         private tonweb;
+        private toncore;
         get wallets(): IWalletPlugin[];
         get tokens(): ITokenObject[];
         get durationUnits(): {

@@ -101,11 +101,13 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
                 components_2.RequireJS.config({
                     baseUrl: `${moduleDir}/lib`,
                     paths: {
-                        'tonweb': 'tonweb'
+                        'tonweb': 'tonweb',
+                        'ton-core': 'ton-core',
                     }
                 });
-                components_2.RequireJS.require(['tonweb'], function (TonWeb) {
+                components_2.RequireJS.require(['tonweb', 'ton-core'], function (TonWeb, TonCore) {
                     self.tonweb = new TonWeb();
+                    self.toncore = TonCore;
                     resolve(self.tonweb);
                 });
             });
@@ -146,11 +148,12 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             return transactionHash;
         }
         async constructPayload(msg) {
-            const cell = new this.tonweb.boc.Cell();
-            cell.bits.writeUint(0, 32);
-            cell.bits.writeString(msg);
-            const bocBytes = await cell.toBoc(false, true); // has_idx = false, hash_crc32 = true
-            return this.tonweb.utils.bytesToBase64(bocBytes);
+            const body = this.toncore.beginCell()
+                .storeUint(0, 32)
+                .storeStringTail(msg)
+                .endCell();
+            const payload = body.toBoc().toString("base64");
+            return payload;
         }
         async getTokenInfo(address, chainId) {
             let token;
@@ -553,8 +556,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             let subscriptionFee = this.totalAmount;
             let subscriptionFeeToAddress = this._data.recipient;
             const creatorPubkey = scom_social_sdk_1.Nip19.decode(this._data.creatorId).data;
-            // const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
-            const comment = `${creatorPubkey}:${this._data.communityId}:${startTime}:${endTime}`; //FIXME: selfPubkey is removed because the comment is too long. 
+            const comment = `${creatorPubkey}:${this._data.communityId}:${this.dataManager.selfPubkey}:${startTime}:${endTime}`;
             const payload = await this.subscriptionModel.constructPayload(comment);
             //https://ton-connect.github.io/sdk/modules/_tonconnect_ui.html#send-transaction
             const transaction = {
