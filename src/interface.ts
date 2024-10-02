@@ -33,6 +33,7 @@ export interface ISubscriptionDiscountRule {
 export interface ITonSubscription {
     creatorId?: string;
     communityId?: string;
+    photoUrl?: string;
     name?: string;
     paymentModel?: PaymentModel;
     networkType?: NetworkType;

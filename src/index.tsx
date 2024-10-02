@@ -384,7 +384,8 @@ export default class ScomTonSubscription extends Module {
                     this.duration,
                     this.durationUnit,
                     this._data.currency,
-                    this.totalAmount
+                    this.totalAmount,
+                    this._data.photoUrl
                 );
                 webApp?.openInvoice(invoiceLink, function (status: string) {
                     webApp?.MainButton.hideProgress()
