@@ -66,7 +66,6 @@ export default class ScomTonSubscription extends Module {
     private _isRenewal = false;
     private _renewalDate: number;
     private _data: ITonSubscription = {};
-    private token: ITokenObject;
     private _dataManager: SocialDataManager;
     public onMintedNFT: () => void;
     
@@ -122,6 +121,14 @@ export default class ScomTonSubscription extends Module {
         const pricePerDay = basePrice.div(this._data?.durationInDays || 1);
         const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
         return pricePerDay.times(days);
+    }
+
+    private get currency() {
+        if (this._data.networkType === NetworkType.Telegram) {
+            return this._data.currency;
+        }
+        const token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
+        return token?.symbol || "";
     }
 
     showLoading() {
@@ -211,7 +218,6 @@ export default class ScomTonSubscription extends Module {
         try {
             this.determineBtnSubmitCaption();
             this.pnlBody.visible = true;
-            this.token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
             this.edtStartDate.value = this.isRenewal && this.renewalDate ? moment(this.renewalDate * 1000) : moment();
             this.pnlStartDate.visible = !this.isRenewal;
             this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
@@ -274,7 +280,8 @@ export default class ScomTonSubscription extends Module {
 
     private _updateTotalAmount() {
         const duration = Number(this.edtDuration.value) || 0;
-        if (!duration) this.lblOrderTotal.caption = `0 ${this.token?.symbol || ''}`;
+        const currency = this.currency;
+        if (!duration) this.lblOrderTotal.caption = `0 ${currency || ''}`;
         this.pnlDiscount.visible = false;
         if (this.discountApplied) {
             if (this.discountApplied.discountPercentage > 0) {
@@ -288,10 +295,10 @@ export default class ScomTonSubscription extends Module {
                 const price = new BigNumber(this._data.tokenAmount);
                 const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
                 const discountAmount = price.minus(this.basePrice).div(this._data.durationInDays).times(days);
-                this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
+                this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${currency || ''}`;
             }
         }
-        this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${this.token?.symbol || ''}`;
+        this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${currency || ''}`;
     }
 
     private onStartDateChanged() {

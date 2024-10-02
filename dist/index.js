@@ -278,6 +278,13 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
             return pricePerDay.times(days);
         }
+        get currency() {
+            if (this._data.networkType === interface_1.NetworkType.Telegram) {
+                return this._data.currency;
+            }
+            const token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
+            return token?.symbol || "";
+        }
         showLoading() {
             this.pnlLoading.visible = true;
             this.pnlBody.visible = false;
@@ -356,7 +363,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             try {
                 this.determineBtnSubmitCaption();
                 this.pnlBody.visible = true;
-                this.token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
                 this.edtStartDate.value = this.isRenewal && this.renewalDate ? (0, components_3.moment)(this.renewalDate * 1000) : (0, components_3.moment)();
                 this.pnlStartDate.visible = !this.isRenewal;
                 this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY');
@@ -424,8 +430,9 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         _updateTotalAmount() {
             const duration = Number(this.edtDuration.value) || 0;
+            const currency = this.currency;
             if (!duration)
-                this.lblOrderTotal.caption = `0 ${this.token?.symbol || ''}`;
+                this.lblOrderTotal.caption = `0 ${currency || ''}`;
             this.pnlDiscount.visible = false;
             if (this.discountApplied) {
                 if (this.discountApplied.discountPercentage > 0) {
@@ -440,10 +447,10 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                     const price = new eth_wallet_2.BigNumber(this._data.tokenAmount);
                     const days = this.subscriptionModel.getDurationInDays(this.duration, this.durationUnit, this.edtStartDate.value);
                     const discountAmount = price.minus(this.basePrice).div(this._data.durationInDays).times(days);
-                    this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${this.token?.symbol || ''}`;
+                    this.lblDiscountAmount.caption = `-${this.subscriptionModel.formatNumber(discountAmount, 6)} ${currency || ''}`;
                 }
             }
-            this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${this.token?.symbol || ''}`;
+            this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${currency || ''}`;
         }
         onStartDateChanged() {
             this._updateEndDate();
@@ -512,7 +519,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             try {
                 const invoiceSupported = webApp?.isVersionAtLeast('6.1');
                 if (invoiceSupported) {
-                    const invoiceLink = await this.subscriptionModel.createInvoiceLink(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount);
+                    const invoiceLink = await this.subscriptionModel.createInvoiceLink(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount, this._data.photoUrl);
                     webApp?.openInvoice(invoiceLink, function (status) {
                         webApp?.MainButton.hideProgress();
                         if (status == 'paid') {
