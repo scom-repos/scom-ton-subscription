@@ -19,6 +19,13 @@ define("@scom/scom-ton-subscription/index.css.ts", ["require", "exports", "@ijst
 define("@scom/scom-ton-subscription/interface.ts", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    exports.NetworkType = void 0;
+    var NetworkType;
+    (function (NetworkType) {
+        NetworkType["EVM"] = "EVM";
+        NetworkType["TON"] = "TON";
+        NetworkType["Telegram"] = "Telegram";
+    })(NetworkType = exports.NetworkType || (exports.NetworkType = {}));
 });
 define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/components", "@ijstech/eth-wallet"], function (require, exports, components_2, eth_wallet_1) {
     "use strict";

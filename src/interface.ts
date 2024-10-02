@@ -12,7 +12,7 @@ export declare enum PaymentModel {
     Subscription = "Subscription"
 }
 
-export declare enum NetworkType {
+export enum NetworkType {
     EVM = "EVM",
     TON = "TON",
     Telegram = "Telegram"
