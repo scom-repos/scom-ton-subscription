@@ -398,7 +398,6 @@ export default class ScomTonSubscription extends Module {
                 );
                 let self = this;
                 webApp?.openInvoice(invoiceLink, async function (status: string) {
-                    webApp?.MainButton.hideProgress()
                     if (status == 'paid') {
                         webApp?.close();
                         await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");

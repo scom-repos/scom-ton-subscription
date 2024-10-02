@@ -524,7 +524,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                     const invoiceLink = await this.subscriptionModel.createInvoiceLink(this._data.communityId, this.duration, this.durationUnit, this._data.currency, this.totalAmount, this._data.photoUrl);
                     let self = this;
                     webApp?.openInvoice(invoiceLink, async function (status) {
-                        webApp?.MainButton.hideProgress();
                         if (status == 'paid') {
                             webApp?.close();
                             await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
