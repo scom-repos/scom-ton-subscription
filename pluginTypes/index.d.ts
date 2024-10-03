@@ -136,6 +136,7 @@ declare module "@scom/scom-ton-subscription" {
         set isRenewal(value: boolean);
         get renewalDate(): number;
         set renewalDate(value: number);
+        private get isTelegram();
         private get duration();
         private get durationUnit();
         private get basePrice();

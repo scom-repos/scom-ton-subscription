@@ -95,6 +95,10 @@ export default class ScomTonSubscription extends Module {
         }
     }
 
+    private get isTelegram() {
+        return this._data.networkType === NetworkType.Telegram;
+    }
+
     private get duration() {
         return Number(this.edtDuration.value) || 0;
     }
@@ -124,7 +128,7 @@ export default class ScomTonSubscription extends Module {
     }
 
     private get currency() {
-        if (this._data.networkType === NetworkType.Telegram) {
+        if (this.isTelegram) {
             return this._data.currency;
         }
         const token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
@@ -216,6 +220,7 @@ export default class ScomTonSubscription extends Module {
 
     private async refreshDApp() {
         try {
+            this.pnlHeader.visible = !this.isTelegram;
             this.determineBtnSubmitCaption();
             this.pnlBody.visible = true;
             this.edtStartDate.value = this.isRenewal && this.renewalDate ? moment(this.renewalDate * 1000) : moment();
@@ -351,7 +356,7 @@ export default class ScomTonSubscription extends Module {
         }        
     }
     private determineBtnSubmitCaption() {
-        if (!this.isWalletConnected) {
+        if (!this.isTelegram && !this.isWalletConnected) {
             this.btnTonSubmit.caption = 'Connect Wallet';
         }
         else {
@@ -375,7 +380,7 @@ export default class ScomTonSubscription extends Module {
     }
 
     private async onSubmit() {
-        if (!this.isWalletConnected) {
+        if (!this.isTelegram && !this.isWalletConnected) {
             this.connectTonWallet();
             return;
         }
@@ -457,7 +462,7 @@ export default class ScomTonSubscription extends Module {
             return;
         }
         this.updateSubmitButton(true);
-        if (this._data.networkType === NetworkType.Telegram) {
+        if (this.isTelegram) {
             await this.handleTelegramPayment();
         } else {
             await this.handleTonPayment();
@@ -486,13 +491,15 @@ export default class ScomTonSubscription extends Module {
         return (
             <i-panel>
                 <i-scom-dapp-container id="containerDapp">
-                    <i-panel
+                    <i-stack
+                        id="pnlHeader"
+                        direction="horizontal"
+                        alignItems="center"
+                        justifyContent="end"
                         padding={{ top: '0.5rem', bottom: '0.5rem', left: '1.75rem', right: '1.75rem' }}
                         background={{ color: Theme.background.modal }}
                     >
-                        <i-stack id="pnlHeader" direction="horizontal" alignItems="center" justifyContent="end">
-                        </i-stack>
-                    </i-panel>
+                    </i-stack>
                     <i-panel background={{ color: Theme.background.main }}>
                         <i-stack
                             id="pnlLoading"

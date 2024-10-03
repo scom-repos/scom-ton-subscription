@@ -256,6 +256,9 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 this.onDurationChanged();
             }
         }
+        get isTelegram() {
+            return this._data.networkType === interface_1.NetworkType.Telegram;
+        }
         get duration() {
             return Number(this.edtDuration.value) || 0;
         }
@@ -282,7 +285,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             return pricePerDay.times(days);
         }
         get currency() {
-            if (this._data.networkType === interface_1.NetworkType.Telegram) {
+            if (this.isTelegram) {
                 return this._data.currency;
             }
             const token = this.subscriptionModel.tokens.find(token => token.address === this._data.currency || token.symbol === this._data.currency);
@@ -364,6 +367,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         async refreshDApp() {
             try {
+                this.pnlHeader.visible = !this.isTelegram;
                 this.determineBtnSubmitCaption();
                 this.pnlBody.visible = true;
                 this.edtStartDate.value = this.isRenewal && this.renewalDate ? (0, components_3.moment)(this.renewalDate * 1000) : (0, components_3.moment)();
@@ -503,7 +507,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             }
         }
         determineBtnSubmitCaption() {
-            if (!this.isWalletConnected) {
+            if (!this.isTelegram && !this.isWalletConnected) {
                 this.btnTonSubmit.caption = 'Connect Wallet';
             }
             else {
@@ -511,7 +515,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             }
         }
         async onSubmit() {
-            if (!this.isWalletConnected) {
+            if (!this.isTelegram && !this.isWalletConnected) {
                 this.connectTonWallet();
                 return;
             }
@@ -592,7 +596,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 return;
             }
             this.updateSubmitButton(true);
-            if (this._data.networkType === interface_1.NetworkType.Telegram) {
+            if (this.isTelegram) {
                 await this.handleTelegramPayment();
             }
             else {
@@ -620,8 +624,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         render() {
             return (this.$render("i-panel", null,
                 this.$render("i-scom-dapp-container", { id: "containerDapp" },
-                    this.$render("i-panel", { padding: { top: '0.5rem', bottom: '0.5rem', left: '1.75rem', right: '1.75rem' }, background: { color: Theme.background.modal } },
-                        this.$render("i-stack", { id: "pnlHeader", direction: "horizontal", alignItems: "center", justifyContent: "end" })),
+                    this.$render("i-stack", { id: "pnlHeader", direction: "horizontal", alignItems: "center", justifyContent: "end", padding: { top: '0.5rem', bottom: '0.5rem', left: '1.75rem', right: '1.75rem' }, background: { color: Theme.background.modal } }),
                     this.$render("i-panel", { background: { color: Theme.background.main } },
                         this.$render("i-stack", { id: "pnlLoading", direction: "vertical", height: "100%", alignItems: "center", justifyContent: "center", padding: { top: "1rem", bottom: "1rem", left: "1rem", right: "1rem" }, visible: false },
                             this.$render("i-panel", { class: 'spinner' })),
