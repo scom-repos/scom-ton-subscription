@@ -575,8 +575,8 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             };
             try {
                 const result = await this.tonConnectUI.sendTransaction(transaction);
-                const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
-                await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
+                // const txHash = await this.subscriptionModel.getTransactionHash(result.boc);
+                // await this.subscriptionModel.updateCommunitySubscription(this.dataManager, this._data.creatorId, this._data.communityId, startTime, endTime, txHash);
                 if (this.onMintedNFT)
                     this.onMintedNFT();
             }
