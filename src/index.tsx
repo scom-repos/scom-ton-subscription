@@ -405,7 +405,7 @@ export default class ScomTonSubscription extends Module {
                 webApp?.openInvoice(invoiceLink, async function (status: string) {
                     if (status == 'paid') {
                         webApp?.close();
-                        await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
+                        // await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
                         if (self.onMintedNFT) self.onMintedNFT();
                     } else if (status == 'failed') {
                         webApp?.HapticFeedback.notificationOccurred('error');

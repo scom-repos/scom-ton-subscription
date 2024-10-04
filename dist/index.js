@@ -533,7 +533,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                     webApp?.openInvoice(invoiceLink, async function (status) {
                         if (status == 'paid') {
                             webApp?.close();
-                            await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
+                            // await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
                             if (self.onMintedNFT)
                                 self.onMintedNFT();
                         }
