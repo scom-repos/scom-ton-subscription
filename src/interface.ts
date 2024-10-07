@@ -12,7 +12,7 @@ export declare enum PaymentModel {
     Subscription = "Subscription"
 }
 
-export enum NetworkType {
+export enum PaymentMethod {
     EVM = "EVM",
     TON = "TON",
     Telegram = "Telegram"
@@ -36,7 +36,7 @@ export interface ITonSubscription {
     photoUrl?: string;
     name?: string;
     paymentModel?: PaymentModel;
-    networkType?: NetworkType;
+	paymentMethod?: PaymentMethod;
     chainId?: number;
     tokenAddress?: string;
     tokenType?: TokenType;

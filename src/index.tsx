@@ -21,7 +21,7 @@ import { Nip19, SocialDataManager } from '@scom/scom-social-sdk';
 import { ITokenObject } from '@scom/scom-token-list';
 import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
-import { ISubscriptionDiscountRule, ITonSubscription, NetworkType } from './interface';
+import { ISubscriptionDiscountRule, ITonSubscription, PaymentMethod } from './interface';
 import { SubscriptionModel } from './model';
 
 const Theme = Styles.Theme.ThemeVars;
@@ -96,7 +96,7 @@ export default class ScomTonSubscription extends Module {
     }
 
     private get isTelegram() {
-        return this._data.networkType === NetworkType.Telegram;
+        return this._data.paymentMethod === PaymentMethod.Telegram;
     }
 
     private get duration() {

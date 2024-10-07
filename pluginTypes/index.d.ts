@@ -14,7 +14,7 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         OneTimePurchase = "OneTimePurchase",
         Subscription = "Subscription"
     }
-    export enum NetworkType {
+    export enum PaymentMethod {
         EVM = "EVM",
         TON = "TON",
         Telegram = "Telegram"
@@ -36,7 +36,7 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         photoUrl?: string;
         name?: string;
         paymentModel?: PaymentModel;
-        networkType?: NetworkType;
+        paymentMethod?: PaymentMethod;
         chainId?: number;
         tokenAddress?: string;
         tokenType?: TokenType;
