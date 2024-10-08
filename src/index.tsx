@@ -24,6 +24,7 @@ import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
 import { ISubscriptionDiscountRule, ITonSubscription, PaymentMethod } from './interface';
 import { SubscriptionModel } from './model';
+import { ScomTelegramPayWidget } from '@scom/scom-payment-widget';
 
 const Theme = Styles.Theme.ThemeVars;
 const path = application.currentModuleDir;
@@ -61,6 +62,7 @@ export default class ScomTonSubscription extends Module {
     private iconOrderTotal: Icon;
     private isWalletConnected: boolean;
     private btnTonSubmit: Button;
+    private telegramPayWidget: ScomTelegramPayWidget;
     private tonConnectUI: any;
 
     private subscriptionModel: SubscriptionModel;
@@ -69,6 +71,7 @@ export default class ScomTonSubscription extends Module {
     private _renewalDate: number;
     private _data: ITonSubscription = {};
     private _dataManager: SocialDataManager;
+    private botApiEndpoint = "http://localhost:3000";
     public onMintedNFT: () => void;
     
     get dataManager() {
@@ -231,6 +234,11 @@ export default class ScomTonSubscription extends Module {
             this.pnlCustomStartDate.visible = !this.isRenewal;
             this.lblStartDate.caption = this.isRenewal ? this.edtStartDate.value.format('DD/MM/YYYY hh:mm A') : "Now";
             this.lblStartDate.visible = true;
+            this.btnTonSubmit.visible = !this.isTelegram;
+            this.telegramPayWidget.visible = this.isTelegram;
+            if (this.isTelegram) {
+                this.telegramPayWidget.payBtnCaption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
+            }
             const rule = this._data.discountRuleId ? this._data.discountRules.find(rule => rule.id === this._data.discountRuleId) : null;
             const isExpired = rule && rule.endTime && rule.endTime < moment().unix();
             if (isExpired) this._data.discountRuleId = undefined;
@@ -310,6 +318,22 @@ export default class ScomTonSubscription extends Module {
         this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${currency || ''}`;
     }
 
+    private _updateInvoiceData() {
+        if (this.isTelegram) {
+            this.telegramPayWidget.invoiceData = {
+                title: `Subscribe ${this._data.communityId}`,
+                description: `${this.duration}-${this.durationUnit.charAt(0).toUpperCase() + this.durationUnit.slice(1, -1)} Subscription`,
+                currency: this._data.currency,
+                payload: "",
+                prices: [{
+                    label: 'Subscription Fee',
+                    amount: this.totalAmount.shiftedBy(2).toFixed(0)
+                }],
+                photoUrl: this._data.photoUrl
+            }
+        }
+    }
+
     private onStartDateChanged() {
         this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY hh:mm A');
         this._updateEndDate();
@@ -320,12 +344,14 @@ export default class ScomTonSubscription extends Module {
         this._updateEndDate();
         this._updateDiscount();
         this._updateTotalAmount();
+        this._updateInvoiceData();
     }
 
     private onDurationUnitChanged() {
         this._updateEndDate();
         this._updateDiscount();
         this._updateTotalAmount();
+        this._updateInvoiceData();
     }
 
     private handleCustomCheckboxChange() {
@@ -373,7 +399,7 @@ export default class ScomTonSubscription extends Module {
         }        
     }
     private determineBtnSubmitCaption() {
-        if (!this.isTelegram && !this.isWalletConnected) {
+        if (!this.isWalletConnected) {
             this.btnTonSubmit.caption = 'Connect Wallet';
         }
         else {
@@ -403,38 +429,15 @@ export default class ScomTonSubscription extends Module {
         }
         this.doSubmitAction();
     }
-    private async handleTelegramPayment() {
+    private async handleTelegramPaymentCallback(status: string) {
         const webApp = window['Telegram']?.WebApp;
-        try {
-            const invoiceSupported = webApp?.isVersionAtLeast('6.1');
-            if (invoiceSupported) {
-                const startTime = this.edtStartDate.value.unix();
-                const endTime = moment.unix(startTime).add(this.duration, this.durationUnit).unix();
-                const invoiceLink = await this.subscriptionModel.createInvoiceLink(
-                    this._data.communityId,
-                    this.duration,
-                    this.durationUnit,
-                    this._data.currency,
-                    this.totalAmount,
-                    this._data.photoUrl
-                );
-                let self = this;
-                webApp?.openInvoice(invoiceLink, async function (status: string) {
-                    if (status == 'paid') {
-                        // await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
-                        if (self.onMintedNFT) self.onMintedNFT();
-                    } else if (status == 'failed') {
-                        webApp?.HapticFeedback.notificationOccurred('error');
-                    } else {
-                        webApp?.HapticFeedback.notificationOccurred('warning');
-                    }
-                });
-            } else {
-                this.showTxStatusModal('error', "Some features not available. Please update your telegram app!");
-            }
-        } catch (e) {
-            this.showTxStatusModal('error', "Some error occurred while processing order!");
-            console.error(e);
+        if (status == 'paid') {
+            // await self.subscriptionModel.updateCommunitySubscription(self.dataManager, self._data.creatorId, self._data.communityId, startTime, endTime, "");
+            if (this.onMintedNFT) this.onMintedNFT();
+        } else if (status == 'failed') {
+            webApp?.HapticFeedback.notificationOccurred('error');
+        } else {
+            webApp?.HapticFeedback.notificationOccurred('warning');
         }
     }
     private async handleTonPayment() {
@@ -481,11 +484,7 @@ export default class ScomTonSubscription extends Module {
           this.edtStartDate.value = moment();
         }
         this.updateSubmitButton(true);
-        if (this.isTelegram) {
-            await this.handleTelegramPayment();
-        } else {
-            await this.handleTonPayment();
-        }
+        await this.handleTonPayment();
         this.updateSubmitButton(false);
     }
 
@@ -496,6 +495,7 @@ export default class ScomTonSubscription extends Module {
         const durationUnits = this.subscriptionModel.durationUnits;
         this.comboDurationUnit.items = durationUnits;
         this.comboDurationUnit.selectedItem = durationUnits[0];
+        this.telegramPayWidget.font = { size: '1rem', color: Theme.colors.primary.contrastText, bold: true };
         const data = {
             wallets: this.subscriptionModel.wallets,
             networks: [],
@@ -635,6 +635,14 @@ export default class ScomTonSubscription extends Module {
                                             enabled={false}
                                             onClick={this.onSubmit}
                                         ></i-button>
+                                        <i-scom-telegram-pay-widget
+                                            id="telegramPayWidget"
+                                            width='100%'
+                                            botAPIEndpoint={this.botApiEndpoint}
+                                            onPaymentSuccess={this.handleTelegramPaymentCallback}
+                                            payBtnCaption="Subscribe"
+                                            visible={false}
+                                        ></i-scom-telegram-pay-widget>
                                     </i-stack>
                                 </i-stack>
                             </i-stack>

@@ -5,7 +5,6 @@ import { ITokenObject } from '@scom/scom-token-list';
 import { SocialDataManager } from "@scom/scom-social-sdk";
 
 export class SubscriptionModel {
-    private apiEndpoint = "http://localhost:3000";
     private tonweb;
     private toncore;
 
@@ -174,33 +173,5 @@ export class SubscriptionModel {
             end: endTime,
             txHash: txHash
         });
-    }
-
-    async createInvoiceLink(
-        communityId: string,
-        duration: number,
-        durationUnit: 'days' | 'months' | 'years',
-        currency: string,
-        price: BigNumber,
-        photoUrl?: string
-    ): Promise<string> {
-        const response = await fetch(`${this.apiEndpoint}/invoice`, {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            method: 'POST',
-            body: JSON.stringify({
-                title: `Subscribe ${communityId}`,
-                description: `${duration}-${durationUnit.charAt(0).toUpperCase() + durationUnit.slice(1, -1)} Subscription`,
-                currency: currency,
-                prices: JSON.stringify([{
-                    label: 'Subscription Fee',
-                    amount: price.shiftedBy(2).toFixed(0)
-                }]),
-                photoUrl
-            })
-        });
-        let result = await response.json();
-        return result?.data?.invoiceLink || '';
     }
 }

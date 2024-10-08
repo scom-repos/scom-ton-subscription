@@ -15,7 +15,8 @@
         "@scom/scom-token-list": "^0.1.0",
         "@scom/scom-dapp-container": "^0.1.2",
         "@scom/scom-tx-status-modal": "^0.1.0",
-        "@scom/scom-social-sdk": "^0.1.60"
+        "@scom/scom-social-sdk": "^0.1.60",
+        "@scom/scom-payment-widget": "https://github.com/scom-repos/scom-telegram-pay-widget.git"
     },
     "devDependencies": {
         "@ijstech/cli": "^0.1.26",

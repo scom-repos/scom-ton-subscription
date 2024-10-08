@@ -65,7 +65,6 @@ declare module "@scom/scom-ton-subscription/model.ts" {
     import { ITokenObject } from '@scom/scom-token-list';
     import { SocialDataManager } from "@scom/scom-social-sdk";
     export class SubscriptionModel {
-        private apiEndpoint;
         private tonweb;
         private toncore;
         get wallets(): IWalletPlugin[];
@@ -85,7 +84,6 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         constructPayload(msg: string): Promise<any>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
         updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
-        createInvoiceLink(communityId: string, duration: number, durationUnit: 'days' | 'months' | 'years', currency: string, price: BigNumber, photoUrl?: string): Promise<string>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
@@ -123,6 +121,7 @@ declare module "@scom/scom-ton-subscription" {
         private iconOrderTotal;
         private isWalletConnected;
         private btnTonSubmit;
+        private telegramPayWidget;
         private tonConnectUI;
         private subscriptionModel;
         private discountApplied;
@@ -130,6 +129,7 @@ declare module "@scom/scom-ton-subscription" {
         private _renewalDate;
         private _data;
         private _dataManager;
+        private botApiEndpoint;
         onMintedNFT: () => void;
         get dataManager(): SocialDataManager;
         set dataManager(manager: SocialDataManager);
@@ -164,6 +164,7 @@ declare module "@scom/scom-ton-subscription" {
         private _updateEndDate;
         private _updateDiscount;
         private _updateTotalAmount;
+        private _updateInvoiceData;
         private onStartDateChanged;
         private onDurationChanged;
         private onDurationUnitChanged;
@@ -174,7 +175,7 @@ declare module "@scom/scom-ton-subscription" {
         private determineBtnSubmitCaption;
         private showTxStatusModal;
         private onSubmit;
-        private handleTelegramPayment;
+        private handleTelegramPaymentCallback;
         private handleTonPayment;
         private doSubmitAction;
         init(): Promise<void>;
