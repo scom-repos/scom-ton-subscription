@@ -108,8 +108,9 @@ declare module "@scom/scom-ton-subscription" {
         private pnlHeader;
         private pnlLoading;
         private pnlBody;
-        private pnlStartDate;
         private edtStartDate;
+        private pnlCustomStartDate;
+        private chkCustomStartDate;
         private lblStartDate;
         private edtDuration;
         private comboDurationUnit;
@@ -166,6 +167,7 @@ declare module "@scom/scom-ton-subscription" {
         private onStartDateChanged;
         private onDurationChanged;
         private onDurationUnitChanged;
+        private handleCustomCheckboxChange;
         private updateSubmitButton;
         private initTonWallet;
         private connectTonWallet;
