@@ -302,7 +302,7 @@ export default class ScomTonSubscription extends Module {
         this.pnlDiscount.visible = false;
         if (this.discountApplied) {
             if (this.discountApplied.discountPercentage > 0) {
-                this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}% off)`;
+                this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}%)`;
                 this.pnlDiscount.visible = true;
             } else if (this.discountApplied.fixedPrice> 0) {
                 this.lblDiscount.caption = "Discount";
@@ -535,7 +535,7 @@ export default class ScomTonSubscription extends Module {
                             <i-stack direction="vertical" width="100%" maxWidth={600} gap='0.5rem'>
                                 <i-stack id="pnlBody" direction="vertical" gap="0.5rem">
                                     <i-stack direction="horizontal" width="100%" alignItems="center" justifyContent="space-between" gap={10}>
-                                        <i-label caption="Starts" font={{ bold: true, size: '1rem' }}></i-label>
+                                        <i-label caption="Start Date" font={{ bold: true, size: '1rem' }}></i-label>
                                         <i-label id="lblStartDate" font={{ size: '1rem' }} />
                                     </i-stack>
                                     <i-stack id="pnlCustomStartDate" direction="horizontal" width="100%" alignItems="center" justifyContent="space-between" gap={10} visible={false}>
@@ -585,7 +585,7 @@ export default class ScomTonSubscription extends Module {
                                         </i-stack>
                                     </i-stack>
                                     <i-stack direction="horizontal" width="100%" alignItems="center" justifyContent="space-between" gap={10}>
-                                        <i-label caption="Ends" font={{ bold: true, size: '1rem' }}></i-label>
+                                        <i-label caption="End Date" font={{ bold: true, size: '1rem' }}></i-label>
                                         <i-label id="lblEndDate" font={{ size: '1rem' }} />
                                     </i-stack>
                                     <i-stack
@@ -610,7 +610,7 @@ export default class ScomTonSubscription extends Module {
                                         lineHeight={1.5}
                                     >
                                         <i-stack direction="horizontal" alignItems='center' gap="0.5rem">
-                                            <i-label caption='You are going to pay' font={{ bold: true, size: '1rem' }}></i-label>
+                                            <i-label caption='You will pay' font={{ bold: true, size: '1rem' }}></i-label>
                                             <i-icon
                                                 id="iconOrderTotal"
                                                 width={20}

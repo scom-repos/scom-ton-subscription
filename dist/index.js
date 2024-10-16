@@ -428,7 +428,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this.pnlDiscount.visible = false;
             if (this.discountApplied) {
                 if (this.discountApplied.discountPercentage > 0) {
-                    this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}% off)`;
+                    this.lblDiscount.caption = `Discount (${this.discountApplied.discountPercentage}%)`;
                     this.pnlDiscount.visible = true;
                 }
                 else if (this.discountApplied.fixedPrice > 0) {
@@ -627,7 +627,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                             this.$render("i-stack", { direction: "vertical", width: "100%", maxWidth: 600, gap: '0.5rem' },
                                 this.$render("i-stack", { id: "pnlBody", direction: "vertical", gap: "0.5rem" },
                                     this.$render("i-stack", { direction: "horizontal", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10 },
-                                        this.$render("i-label", { caption: "Starts", font: { bold: true, size: '1rem' } }),
+                                        this.$render("i-label", { caption: "Start Date", font: { bold: true, size: '1rem' } }),
                                         this.$render("i-label", { id: "lblStartDate", font: { size: '1rem' } })),
                                     this.$render("i-stack", { id: "pnlCustomStartDate", direction: "horizontal", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10, visible: false },
                                         this.$render("i-checkbox", { id: "chkCustomStartDate", height: "auto", caption: "Custom", onChanged: this.handleCustomCheckboxChange }),
@@ -641,14 +641,14 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                                             this.$render("i-panel", { width: "50%" },
                                                 this.$render("i-combo-box", { id: "comboDurationUnit", height: 36, width: "100%", icon: { width: 14, height: 14, name: 'angle-down', fill: Theme.divider }, border: { width: 1, style: 'solid', color: Theme.divider, radius: 5 }, onChanged: this.onDurationUnitChanged })))),
                                     this.$render("i-stack", { direction: "horizontal", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10 },
-                                        this.$render("i-label", { caption: "Ends", font: { bold: true, size: '1rem' } }),
+                                        this.$render("i-label", { caption: "End Date", font: { bold: true, size: '1rem' } }),
                                         this.$render("i-label", { id: "lblEndDate", font: { size: '1rem' } })),
                                     this.$render("i-stack", { id: "pnlDiscount", direction: "horizontal", width: "100%", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", lineHeight: 1.5, visible: false },
                                         this.$render("i-label", { id: "lblDiscount", caption: "Discount", font: { bold: true, size: '1rem' } }),
                                         this.$render("i-label", { id: "lblDiscountAmount", font: { size: '1rem' } })),
                                     this.$render("i-stack", { width: "100%", direction: "horizontal", justifyContent: "space-between", alignItems: 'center', gap: "0.5rem", lineHeight: 1.5 },
                                         this.$render("i-stack", { direction: "horizontal", alignItems: 'center', gap: "0.5rem" },
-                                            this.$render("i-label", { caption: 'You are going to pay', font: { bold: true, size: '1rem' } }),
+                                            this.$render("i-label", { caption: 'You will pay', font: { bold: true, size: '1rem' } }),
                                             this.$render("i-icon", { id: "iconOrderTotal", width: 20, height: 20, name: "question-circle", fill: Theme.background.modal, tooltip: { content: 'A commission fee of 0% will be applied to the amount you input.' } })),
                                         this.$render("i-label", { id: 'lblOrderTotal', font: { size: '1rem' }, caption: "0" })),
                                     this.$render("i-stack", { direction: "vertical", width: "100%", justifyContent: "center", alignItems: "center", margin: { top: '0.5rem' }, gap: 8 },
