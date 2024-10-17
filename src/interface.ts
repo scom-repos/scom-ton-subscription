@@ -24,7 +24,7 @@ export interface ISubscriptionDiscountRule {
     startTime: number;
     endTime: number;
     minDuration?: number;
-    discountType: 'Percentage' | 'FixedAmount';
+    discountType?: 'Percentage' | 'FixedAmount';
     discountPercentage?: number;
     fixedPrice?: number;
     discountApplication: number;

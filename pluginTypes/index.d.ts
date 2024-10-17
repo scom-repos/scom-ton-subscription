@@ -25,7 +25,7 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         startTime: number;
         endTime: number;
         minDuration?: number;
-        discountType: 'Percentage' | 'FixedAmount';
+        discountType?: 'Percentage' | 'FixedAmount';
         discountPercentage?: number;
         fixedPrice?: number;
         discountApplication: number;
