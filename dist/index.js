@@ -465,6 +465,12 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this._updateDiscount();
         }
         onDurationChanged() {
+            if (this.isTelegram) {
+                this.telegramPayWidget.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
+            }
+            else if (this.isWalletConnected) {
+                this.btnTonSubmit.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
+            }
             this._updateEndDate();
             this._updateDiscount();
             this._updateTotalAmount();
@@ -479,11 +485,16 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         handleCustomCheckboxChange() {
             const isChecked = this.chkCustomStartDate.checked;
             this.edtStartDate.enabled = isChecked;
+            const now = (0, components_3.moment)();
             if (isChecked) {
+                if (this.edtStartDate.value.isBefore(now)) {
+                    this.edtStartDate.value = now;
+                }
                 this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY hh:mm A');
+                this.edtStartDate.minDate = now;
             }
             else {
-                this.edtStartDate.value = (0, components_3.moment)();
+                this.edtStartDate.value = now;
                 this.lblStartDate.caption = "Now";
                 this._updateEndDate();
             }
@@ -506,6 +517,12 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 });
                 this.tonConnectUI.onStatusChange((walletAndwalletInfo) => {
                     this.isWalletConnected = !!walletAndwalletInfo;
+                    if (this.isWalletConnected) {
+                        this.btnTonSubmit.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
+                    }
+                    else {
+                        this.btnTonSubmit.enabled = true;
+                    }
                     this.determineBtnSubmitCaption();
                 });
             }
