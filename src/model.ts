@@ -164,6 +164,7 @@ export class SubscriptionModel {
         communityId: string,
         startTime: number,
         endTime: number,
+        currency: string,
         txHash: string
     ) {
         await dataManager.updateCommunitySubscription({
@@ -171,6 +172,7 @@ export class SubscriptionModel {
             communityId: communityId,
             start: startTime,
             end: endTime,
+            currency: currency,
             txHash: txHash
         });
     }

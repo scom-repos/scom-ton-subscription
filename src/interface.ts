@@ -1,4 +1,5 @@
 import { BigNumber, IClientSideProvider } from "@ijstech/eth-wallet";
+import { ISubscriptionDiscountRule } from "@scom/scom-social-sdk";
 import { ITokenObject } from "@scom/scom-token-list";
 
 export declare enum TokenType {
@@ -16,18 +17,6 @@ export enum PaymentMethod {
     EVM = "EVM",
     TON = "TON",
     Telegram = "Telegram"
-}
-
-export interface ISubscriptionDiscountRule {
-    id: number;
-    name: string;
-    startTime: number;
-    endTime: number;
-    minDuration?: number;
-    discountType?: 'Percentage' | 'FixedAmount';
-    discountPercentage?: number;
-    fixedPrice?: number;
-    discountApplication: number;
 }
 
 export interface ITonSubscription {

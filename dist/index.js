@@ -172,12 +172,13 @@ define("@scom/scom-ton-subscription/model.ts", ["require", "exports", "@ijstech/
             }
             return token;
         }
-        async updateCommunitySubscription(dataManager, creatorId, communityId, startTime, endTime, txHash) {
+        async updateCommunitySubscription(dataManager, creatorId, communityId, startTime, endTime, currency, txHash) {
             await dataManager.updateCommunitySubscription({
                 communityCreatorId: creatorId,
                 communityId: communityId,
                 start: startTime,
                 end: endTime,
+                currency: currency,
                 txHash: txHash
             });
         }
@@ -355,10 +356,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                 this.lblStartDate.caption = this.isRenewal ? this.edtStartDate.value.format('DD/MM/YYYY hh:mm A') : "Now";
                 this.lblStartDate.visible = true;
                 this.btnTonSubmit.visible = !this.isTelegram;
-                this.telegramPayWidget.visible = this.isTelegram;
-                if (this.isTelegram) {
-                    this.telegramPayWidget.payBtnCaption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
-                }
                 const rule = this._data.discountRuleId ? this._data.discountRules.find(rule => rule.id === this._data.discountRuleId) : null;
                 const isExpired = rule && rule.endTime && rule.endTime < (0, components_3.moment)().unix();
                 if (isExpired)
@@ -444,21 +441,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             }
             this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${currency || ''}`;
         }
-        _updateInvoiceData() {
-            if (this.isTelegram) {
-                this.telegramPayWidget.invoiceData = {
-                    title: `Subscribe ${this._data.communityId}`,
-                    description: `${this.duration}-${this.durationUnit.charAt(0).toUpperCase() + this.durationUnit.slice(1, -1)} Subscription`,
-                    currency: this._data.currency,
-                    payload: "",
-                    prices: [{
-                            label: 'Subscription Fee',
-                            amount: this.totalAmount.shiftedBy(2).toFixed(0)
-                        }],
-                    photoUrl: this._data.photoUrl
-                };
-            }
-        }
         onStartDateChanged() {
             this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY hh:mm A');
             this._updateEndDate();
@@ -466,7 +448,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
         }
         onDurationChanged() {
             if (this.isTelegram) {
-                this.telegramPayWidget.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
             }
             else if (this.isWalletConnected) {
                 this.btnTonSubmit.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
@@ -474,13 +455,11 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             this._updateEndDate();
             this._updateDiscount();
             this._updateTotalAmount();
-            this._updateInvoiceData();
         }
         onDurationUnitChanged() {
             this._updateEndDate();
             this._updateDiscount();
             this._updateTotalAmount();
-            this._updateInvoiceData();
         }
         handleCustomCheckboxChange() {
             const isChecked = this.chkCustomStartDate.checked;
@@ -622,7 +601,6 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
             const durationUnits = this.subscriptionModel.durationUnits;
             this.comboDurationUnit.items = durationUnits;
             this.comboDurationUnit.selectedItem = durationUnits[0];
-            this.telegramPayWidget.font = { size: '1rem', color: Theme.colors.primary.contrastText, bold: true };
             const data = {
                 wallets: this.subscriptionModel.wallets,
                 networks: [],
@@ -669,8 +647,7 @@ define("@scom/scom-ton-subscription", ["require", "exports", "@ijstech/component
                                             this.$render("i-icon", { id: "iconOrderTotal", width: 20, height: 20, name: "question-circle", fill: Theme.background.modal, tooltip: { content: 'A commission fee of 0% will be applied to the amount you input.' } })),
                                         this.$render("i-label", { id: 'lblOrderTotal', font: { size: '1rem' }, caption: "0" })),
                                     this.$render("i-stack", { direction: "vertical", width: "100%", justifyContent: "center", alignItems: "center", margin: { top: '0.5rem' }, gap: 8 },
-                                        this.$render("i-button", { id: 'btnTonSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, enabled: false, onClick: this.onSubmit }),
-                                        this.$render("i-scom-telegram-pay-widget", { id: "telegramPayWidget", width: '100%', botAPIEndpoint: this.botApiEndpoint, onPaymentSuccess: this.handleTelegramPaymentCallback, payBtnCaption: "Subscribe", visible: false }))))),
+                                        this.$render("i-button", { id: 'btnTonSubmit', width: '100%', caption: 'Subscribe', padding: { top: '1rem', bottom: '1rem', left: '1rem', right: '1rem' }, font: { size: '1rem', color: Theme.colors.primary.contrastText, bold: true }, rightIcon: { visible: false, fill: Theme.colors.primary.contrastText }, background: { color: Theme.background.gradient }, border: { radius: 12 }, enabled: false, onClick: this.onSubmit }))))),
                         this.$render("i-scom-tx-status-modal", { id: "txStatusModal" })))));
         }
     };

@@ -5,6 +5,7 @@ declare module "@scom/scom-ton-subscription/index.css.ts" {
 /// <amd-module name="@scom/scom-ton-subscription/interface.ts" />
 declare module "@scom/scom-ton-subscription/interface.ts" {
     import { IClientSideProvider } from "@ijstech/eth-wallet";
+    import { ISubscriptionDiscountRule } from "@scom/scom-social-sdk";
     export enum TokenType {
         ERC20 = "ERC20",
         ERC721 = "ERC721",
@@ -18,17 +19,6 @@ declare module "@scom/scom-ton-subscription/interface.ts" {
         EVM = "EVM",
         TON = "TON",
         Telegram = "Telegram"
-    }
-    export interface ISubscriptionDiscountRule {
-        id: number;
-        name: string;
-        startTime: number;
-        endTime: number;
-        minDuration?: number;
-        discountType?: 'Percentage' | 'FixedAmount';
-        discountPercentage?: number;
-        fixedPrice?: number;
-        discountApplication: number;
     }
     export interface ITonSubscription {
         creatorId?: string;
@@ -83,7 +73,7 @@ declare module "@scom/scom-ton-subscription/model.ts" {
         getTransactionHash(boc: string): Promise<string>;
         constructPayload(msg: string): Promise<any>;
         getTokenInfo(address: string, chainId: number): Promise<ITokenObject>;
-        updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, txHash: string): Promise<void>;
+        updateCommunitySubscription(dataManager: SocialDataManager, creatorId: string, communityId: string, startTime: number, endTime: number, currency: string, txHash: string): Promise<void>;
     }
 }
 /// <amd-module name="@scom/scom-ton-subscription" />
@@ -121,7 +111,6 @@ declare module "@scom/scom-ton-subscription" {
         private iconOrderTotal;
         private isWalletConnected;
         private btnTonSubmit;
-        private telegramPayWidget;
         private tonConnectUI;
         private subscriptionModel;
         private discountApplied;
@@ -164,7 +153,6 @@ declare module "@scom/scom-ton-subscription" {
         private _updateEndDate;
         private _updateDiscount;
         private _updateTotalAmount;
-        private _updateInvoiceData;
         private onStartDateChanged;
         private onDurationChanged;
         private onDurationUnitChanged;

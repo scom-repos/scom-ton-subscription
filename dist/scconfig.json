@@ -12,7 +12,6 @@
         "@scom/scom-mqtt",
         "@scom/scom-social-sdk",
         "@scom/scom-token-list",
-        "@scom/scom-tx-status-modal",
-        "@scom/scom-payment-widget"
+        "@scom/scom-tx-status-modal"
     ]
 }

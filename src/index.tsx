@@ -18,13 +18,12 @@ import {
 } from '@ijstech/components';
 import { BigNumber, Utils } from '@ijstech/eth-wallet';
 import ScomDappContainer from '@scom/scom-dapp-container';
-import { Nip19, SocialDataManager } from '@scom/scom-social-sdk';
+import { ISubscriptionDiscountRule, Nip19, SocialDataManager } from '@scom/scom-social-sdk';
 import { ITokenObject } from '@scom/scom-token-list';
 import ScomTxStatusModal from '@scom/scom-tx-status-modal';
 import { inputStyle } from './index.css';
-import { ISubscriptionDiscountRule, ITonSubscription, PaymentMethod } from './interface';
+import { ITonSubscription, PaymentMethod } from './interface';
 import { SubscriptionModel } from './model';
-import { ScomTelegramPayWidget } from '@scom/scom-payment-widget';
 
 const Theme = Styles.Theme.ThemeVars;
 const path = application.currentModuleDir;
@@ -62,7 +61,6 @@ export default class ScomTonSubscription extends Module {
     private iconOrderTotal: Icon;
     private isWalletConnected: boolean;
     private btnTonSubmit: Button;
-    private telegramPayWidget: ScomTelegramPayWidget;
     private tonConnectUI: any;
 
     private subscriptionModel: SubscriptionModel;
@@ -235,10 +233,6 @@ export default class ScomTonSubscription extends Module {
             this.lblStartDate.caption = this.isRenewal ? this.edtStartDate.value.format('DD/MM/YYYY hh:mm A') : "Now";
             this.lblStartDate.visible = true;
             this.btnTonSubmit.visible = !this.isTelegram;
-            this.telegramPayWidget.visible = this.isTelegram;
-            if (this.isTelegram) {
-                this.telegramPayWidget.payBtnCaption = this.isRenewal ? 'Renew Subscription' : 'Subscribe';
-            }
             const rule = this._data.discountRuleId ? this._data.discountRules.find(rule => rule.id === this._data.discountRuleId) : null;
             const isExpired = rule && rule.endTime && rule.endTime < moment().unix();
             if (isExpired) this._data.discountRuleId = undefined;
@@ -318,22 +312,6 @@ export default class ScomTonSubscription extends Module {
         this.lblOrderTotal.caption = `${this.subscriptionModel.formatNumber(this.totalAmount, 6)} ${currency || ''}`;
     }
 
-    private _updateInvoiceData() {
-        if (this.isTelegram) {
-            this.telegramPayWidget.invoiceData = {
-                title: `Subscribe ${this._data.communityId}`,
-                description: `${this.duration}-${this.durationUnit.charAt(0).toUpperCase() + this.durationUnit.slice(1, -1)} Subscription`,
-                currency: this._data.currency,
-                payload: "",
-                prices: [{
-                    label: 'Subscription Fee',
-                    amount: this.totalAmount.shiftedBy(2).toFixed(0)
-                }],
-                photoUrl: this._data.photoUrl
-            }
-        }
-    }
-
     private onStartDateChanged() {
         this.lblStartDate.caption = this.edtStartDate.value.format('DD/MM/YYYY hh:mm A');
         this._updateEndDate();
@@ -342,21 +320,18 @@ export default class ScomTonSubscription extends Module {
 
     private onDurationChanged() {
         if (this.isTelegram) {
-            this.telegramPayWidget.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
         } else if (this.isWalletConnected) {
             this.btnTonSubmit.enabled = this.edtDuration.value && this.duration > 0 && Number.isInteger(this.duration);
         }
         this._updateEndDate();
         this._updateDiscount();
         this._updateTotalAmount();
-        this._updateInvoiceData();
     }
 
     private onDurationUnitChanged() {
         this._updateEndDate();
         this._updateDiscount();
         this._updateTotalAmount();
-        this._updateInvoiceData();
     }
 
     private handleCustomCheckboxChange() {
@@ -510,7 +485,6 @@ export default class ScomTonSubscription extends Module {
         const durationUnits = this.subscriptionModel.durationUnits;
         this.comboDurationUnit.items = durationUnits;
         this.comboDurationUnit.selectedItem = durationUnits[0];
-        this.telegramPayWidget.font = { size: '1rem', color: Theme.colors.primary.contrastText, bold: true };
         const data = {
             wallets: this.subscriptionModel.wallets,
             networks: [],
@@ -650,14 +624,6 @@ export default class ScomTonSubscription extends Module {
                                             enabled={false}
                                             onClick={this.onSubmit}
                                         ></i-button>
-                                        <i-scom-telegram-pay-widget
-                                            id="telegramPayWidget"
-                                            width='100%'
-                                            botAPIEndpoint={this.botApiEndpoint}
-                                            onPaymentSuccess={this.handleTelegramPaymentCallback}
-                                            payBtnCaption="Subscribe"
-                                            visible={false}
-                                        ></i-scom-telegram-pay-widget>
                                     </i-stack>
                                 </i-stack>
                             </i-stack>
